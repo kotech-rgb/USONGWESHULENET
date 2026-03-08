@@ -167,7 +167,7 @@ footer a { color:white; margin:0 8px; font-size:1.2rem; }
 <body>
 
 <header id="header">
-  <h1>USONGWE SECONDARY SCHOOL</h1>
+  <h1>USONGWE SECONDARY SCHOOLs</h1>
   <nav>
     <a href="#hero">Home</a>
     <a href="#about">About</a>

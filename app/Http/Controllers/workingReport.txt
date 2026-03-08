@@ -1,0 +1,159 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use App\Models\Darasa;
+use Illuminate\Support\LazyCollection;
+
+class ReportController extends Controller
+{
+   
+
+public function allStudentsReport(Request $request)
+{
+    $termName = DB::table('terms')->where('status', 'active')->value('term_name');
+    $yearName = DB::table('years')->where('status', 'active')->value('year_name');
+    $classes = Darasa::all()->map(fn($item) => preg_replace('/\s+[A-Z]$/', '', $item->name))
+        ->unique()->values();
+    $fullClass = $request->class_name;
+    $baseClass = preg_replace('/\s+[A-Z]$/', '', $fullClass);
+    $totalStudentsInClass = DB::table('students')
+        ->where('class_name', 'LIKE', $baseClass . '%')
+        ->count();
+    // Load results lazily
+    $results = DB::table('results')
+        ->join('students', 'results.student_id', '=', 'students.id')
+        ->select(
+            'students.id as student_id',
+            'students.index_number',
+            'students.firstname',
+            'students.lastname',
+            'students.middlename',
+            'students.class_name',
+            'results.score_details',
+            'results.total_points',
+            'results.division',
+            'results.position',
+            'results.term',
+            'results.year',
+            'results.class'
+        )
+        ->where('results.term', $request->term)
+        ->where('results.year', $request->year)
+        ->where('results.class', $request->class)
+        ->orderBy('results.position')
+        ->get(); // we need a collection for ranking
+    if ($results->isEmpty() && $request->filled('class')) {
+        return back()->with('warning', 'No results approved for the selected class in this term');
+    }
+    // Step 1: Build subject scores for all students
+    $subjectScores = []; // [subject => [student_id => score]]
+    foreach ($results as $res) {
+        foreach (explode(',', $res->score_details) as $detail) {
+            if (preg_match('/^(.+)-(\d+)\(([A-Z])\)$/', trim($detail), $matches)) {
+                $subject = trim($matches[1]);
+                $score   = (int)$matches[2];
+                $subjectScores[$subject][$res->student_id] = $score;
+            }
+        }
+    }
+    // Step 2: Rank students per subject
+    $subjectRanks = []; // [subject => [student_id => position]]
+    foreach ($subjectScores as $subject => $scores) {
+        // Sort scores descending
+        arsort($scores);
+
+        $rank = 0;
+        $prevScore = null;
+        $sameRankCount = 0;
+
+        foreach ($scores as $studentId => $score) {
+            if ($score !== $prevScore) {
+                $rank += $sameRankCount + 1; // move rank forward
+                $sameRankCount = 0;
+                $prevScore = $score;
+            } else {
+                $sameRankCount++;
+            }
+            $subjectRanks[$subject][$studentId] = $rank;
+        }
+    }
+    // Step 3: Attach positions back to results
+    foreach ($results as $res) {
+        $subjectPositions = [];
+        foreach (explode(',', $res->score_details) as $detail) {
+            if (preg_match('/^(.+)-(\d+)\(([A-Z])\)$/', trim($detail), $matches)) {
+                $subject = trim($matches[1]);
+                $score   = (int)$matches[2];
+                $grade   = $matches[3];
+
+                $subjectPositions[$subject] = [
+                    'score'   => $score,
+                    'grade'   => $grade,
+                    'position'=> $subjectRanks[$subject][$res->student_id] ?? null,
+                ];
+            }
+        }
+        $res->subject_positions = $subjectPositions;
+    }
+    return view('Manage_report.all', compact('results', 'termName', 'yearName', 'classes', 'totalStudentsInClass'));
+}
+
+
+
+public function singleStudentReport(Request $request)
+{
+    $studentId = $request->student_id;
+    $termName  = $request->term ?? DB::table('terms')->where('status','active')->value('term_name');
+    $yearName  = $request->year ?? DB::table('years')->where('status','active')->value('year_name');
+    $studentResults = DB::table('results')
+        ->join('students', 'results.student_id', '=', 'students.id')
+        ->select(
+            'students.id as student_id',
+            'students.firstname',
+            'students.lastname',
+            'students.class_name',
+            'results.score_details',
+            'results.total_points',
+            'results.division',
+            'results.position',
+            'results.term',
+            'results.year'
+        )
+        ->where('results.term', $termName)
+        ->where('results.year', $yearName)
+        ->where('students.id', $studentId)
+        ->first();
+
+    if (!$studentResults && $studentId != null) {
+        return back()->with('warning', 'No results approved for the selected student in this term');
+    }
+
+    $totalStudentsInClass = 0;
+    if ($studentResults) {
+        $fullClass = $studentResults->class_name;
+        $baseClass = preg_replace('/\s+[A-Z]$/', '', $fullClass);
+        $totalStudentsInClass = DB::table('students')
+            ->where('class_name', 'LIKE', $baseClass . '%')
+            ->count();
+    }
+    $qrCode = null;
+    if ($studentResults) {
+        $qrContent = "Student: {$studentResults->firstname} {$studentResults->lastname}\n" .
+                     "Class: {$studentResults->class_name}\n" .
+                     "Term: {$studentResults->term}, Year: {$studentResults->year}\n" .
+                     "Position: {$studentResults->position}\n" .
+                     "Division: {$studentResults->division}\n" .
+                     "Total Points: {$studentResults->total_points}\n" .
+                     "Scores: {$studentResults->score_details}";
+        $qrCode = QrCode::size(80)->generate($qrContent);
+       }
+    return view('Manage_report.single', compact('studentResults', 'termName', 'yearName', 'totalStudentsInClass', 'qrCode'));
+}
+
+
+
+}

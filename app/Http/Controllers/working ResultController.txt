@@ -1,0 +1,175 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Subject;
+use App\Models\Darasa;
+use App\Models\Exam;
+use App\Models\Term;
+use App\Models\Year;
+use App\Models\Result;
+use App\Models\TeacherSubject;
+use DB;
+use Auth;
+
+class ResultsController extends Controller
+{
+
+public function result_index(Request $request)
+{
+    $termName = Term::where('status', 'active')->value('term_name');
+    $yearName = Year::where('status', 'active')->value('year_name');
+    $user = Auth::user();
+
+    $teacherSubjects = TeacherSubject::where('teacher', $user->id)->get();
+    $Myclasses = $teacherSubjects->map(fn($item) => preg_replace('/\s+[A-Z]$/', '', $item->class))
+        ->unique()->values();
+    $MySubjects = $teacherSubjects->pluck('subject')->unique()->values();
+
+    $classes = Darasa::all()->map(fn($item) => preg_replace('/\s+[A-Z]$/', '', $item->name))
+        ->unique()->values();
+
+    $details = DB::table('students')
+        ->join('exams', 'students.id', '=', 'exams.studentE')
+        ->select(
+            'students.id as studentE',
+            DB::raw("CONCAT(students.firstname, ' ', students.middlename, ' ', students.lastname) as fullname"),
+            'students.gender',
+            'students.index_number',
+            'exams.subjectE',
+            'exams.total_average',
+            'exams.classE'
+        )
+        ->where('exams.termE', $termName)
+        ->where('exams.yearE', $yearName)
+        ->when($request->filled('class_name'), function($query) use ($request) {
+            $query->where('exams.classE', 'LIKE', $request->class_name . '%');
+        })
+        ->get();
+
+    if ($details->isEmpty() && $request->filled('class_name')) {
+        return back()->with('invalid', 'No results found for the selected class in this term');
+    }
+
+    $grades = DB::table('grades')->get();
+    $divisions = DB::table('divisions')->get();
+
+    $grouped = $details->groupBy('studentE');
+
+    // Calculate averages for position
+    $studentAverages = [];
+    foreach ($grouped as $studentE => $exams) {
+        $studentAverages[$studentE] = $exams->avg('total_average');
+    }
+
+    // Assign positions
+    arsort($studentAverages);
+    $positions = [];
+    $lastScore = null;
+    $lastPosition = 0;
+    $skip = 0;
+    foreach ($studentAverages as $studentE => $avg) {
+        if ($avg === $lastScore) {
+            $skip++;
+            $positions[$studentE] = $lastPosition;
+        } else {
+            $lastPosition += 1 + $skip;
+            $skip = 0;
+            $positions[$studentE] = $lastPosition;
+            $lastScore = $avg;
+        }
+    }
+
+    $results = [];
+    foreach ($grouped as $studentE => $exams) {
+        $averageScore = round($exams->avg('total_average'), 2);
+        $averageGrade = $grades->first(fn($g) => $averageScore >= $g->start_form && $averageScore <= $g->end_to)?->name ?? 'N/A';
+
+        $subjectGrades = $exams->map(function($exam) use ($grades) {
+            $grade = $grades->first(fn($g) => $exam->total_average >= $g->start_form && $exam->total_average <= $g->end_to)?->name ?? 'N/A';
+            return "{$exam->subjectE}-{$exam->total_average}({$grade})";
+        })->implode(', ');
+        $subjectGrades .= ", Average: {$averageScore}({$averageGrade})";
+
+        $subjectCount = $exams->count();
+        if ($subjectCount >= 7) {
+            $pointsArray = $exams->map(fn($exam) => $grades->first(fn($g) => $exam->total_average >= $g->start_form && $exam->total_average <= $g->end_to)?->points ?? 0)
+                ->sortDesc()->values()->take(7)->all();
+            $totalPointsTop7 = array_sum($pointsArray);
+            $division = $divisions->first(fn($d) => $totalPointsTop7 >= $d->start_point && $totalPointsTop7 <= $d->end_point)?->div_name ?? 'N/A';
+        } else {
+            $totalPointsTop7 = null;
+            $division = 'INC';
+        }
+
+        $position = $positions[$studentE] ?? 'N/A';
+
+        if ($request->filled('approve')) {
+            Result::updateOrCreate(
+                [
+                    'student_id' => $studentE,
+                    'term' => $termName,
+                    'year' => $yearName,
+                    'class' => $request->class_name
+                ],
+                [
+                    'score_details' => $subjectGrades,
+                    'average_score' => $averageScore,
+                    'average_grade' => $averageGrade,
+                    'total_points' => $totalPointsTop7,
+                    'division' => $division,
+                    'position' => $position
+                ]
+            );
+        }
+
+        $results[] = [
+            'student_id' => $studentE,
+            'indexNO' => $exams->first()->index_number,
+            'fullname' => $exams->first()->fullname,
+            'gender' => $exams->first()->gender,
+            'subjects' => $subjectGrades,
+            'average_score' => $averageScore,
+            'average_grade' => $averageGrade,
+            'total_points' => $totalPointsTop7,
+            'division' => $division,
+            'position' => $position
+        ];
+    }
+
+    if ($request->filled('approve')) {
+        return redirect()->back()->with('success','Results approved and saved.');
+    }
+
+    return view('Manage_result.index', compact('classes','results','Myclasses'));
+}
+
+
+
+public function result_post()
+{
+    $classes = Darasa::all()->map(fn($item) => preg_replace('/\s+[A-Z]$/', '', $item->name))
+        ->unique()->values();
+    $termName = Term::where('status', 'active')->value('term_name');
+    $yearName = Year::where('status', 'active')->value('year_name');
+    $postedClasses = Result::where('term', $termName)
+    ->where('year', $yearName)
+    ->pluck('class')
+    ->map(fn($c) => trim($c))
+    ->unique()
+    ->toArray(); 
+    return view('Manage_result.posting', compact('classes', 'termName', 'yearName', 'postedClasses'));
+}
+
+public function result_deaprove(Request $request)
+{
+    Result::where('class',$request->class)
+    ->where('term', $request->term)
+    ->where('year', $request->year)
+    ->delete();
+    return back()->with('success', 'You have successfully deapproved the results');
+}
+
+
+}

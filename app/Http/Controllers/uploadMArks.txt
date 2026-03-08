@@ -1,0 +1,136 @@
+public function upload_save(Request $request)
+{
+    $request->validate([
+        'file'        => 'required|file|mimes:xls,xlsx',
+        'class_name'  => 'required|string',
+        'subject_name'=> 'required|string',
+        'type'        => 'required|string|in:test,exam',
+    ]);
+
+    $termName = Term::where('status', 'active')->value('term_name');
+    $yearName = Year::where('status', 'active')->value('year_name');
+
+    // Extract main form from request (FORM ONE, FORM TWO, etc.)
+    preg_match('/FORM\s+\w+/i', strtoupper($request->class_name), $matches);
+    $requestForm = strtoupper($matches[0] ?? '');
+
+    $classIds = StudentSubject::where('subject_id', $request->subject_name)
+        ->where('class_id', 'LIKE', $requestForm . '%')
+        ->pluck('class_id');
+
+    if ($classIds->isEmpty()) {
+        return redirect()->back()->with('invalid', 'No students class found for this subject (not enrolled).');
+    }
+
+    $file = $request->file('file');
+    $spreadsheet = IOFactory::load($file->getPathname());
+    $sheet = $spreadsheet->getActiveSheet();
+    $highestColumnIndex = Coordinate::columnIndexFromString($sheet->getHighestColumn());
+    $highestRow = $sheet->getHighestDataRow();
+
+    // Validate column count
+    if ($request->type === 'test' && $highestColumnIndex !== 11) {
+        return redirect()->back()->with('invalid', 'Excel sheet must have 10 columns for test scores (A to J).');
+    }
+    if ($request->type === 'exam' && $highestColumnIndex !== 7) {
+        return redirect()->back()->with('invalid', 'Excel sheet must have 7 columns for exam scores (A to G).');
+    }
+
+    // Prevent test upload if exams already exist
+    if ($request->type === 'test' && Exam::where('subjectE', $request->subject_name)
+        ->where('classE', 'LIKE', $requestForm . '%')
+        ->where('termE', $termName)
+        ->where('yearE', $yearName)
+        ->exists()) {
+        return redirect()->back()->with('invalid', 'Cannot upload test scores because exam marks already exist.');
+    }
+
+    for ($row = 6; $row <= $highestRow; $row++) {
+        $studentIdCell = $sheet->getCell("A{$row}")->getValue();
+        if (empty($studentIdCell)) continue;
+
+        $indexNumber = preg_replace('/^.*\.(\d+)$/', '$1', $studentIdCell);
+        $student = Student::where('index_number', $indexNumber)
+            ->where('class_name', 'LIKE', $requestForm . '%')
+            ->first();
+
+        if (!$student) {
+            return redirect()->back()->with('invalid', "Student not found: {$studentIdCell}");
+        }
+
+        // Ensure student belongs to the selected class form
+        $studentForm = '';
+        if (preg_match('/FORM\s+\w+/i', strtoupper($student->class_name), $matches2)) {
+            $studentForm = strtoupper($matches2[0]);
+        }
+
+        if ($studentForm !== $requestForm) {
+            return redirect()->back()->with('invalid', 'Some students do not belong to the selected class form.');
+        }
+
+        if ($request->type === 'test') {
+            $scores = [];
+            foreach (['G','H','I','J','K'] as $col) {
+                $value = $sheet->getCell("{$col}{$row}")->getValue();
+
+                // Validate marks
+                if ($value === null || $value === '') {
+                    $scores[] = null;
+                } elseif (!is_numeric($value) || $value < 0 || $value > 100) {
+                    return redirect()->back()->with('invalid', "Invalid score for student {$student->index_number} at row {$row}, column {$col}. Must be 0-100 or empty.");
+                } else {
+                    $scores[] = (int)$value;
+                }
+            }
+
+            Test::updateOrCreate(
+                [
+                    'studentT' => $student->id,
+                    'subjectT' => $request->subject_name,
+                    'classT'   => $student->class_name,
+                ],
+                [
+                    'test1' => $scores[0],
+                    'test2' => $scores[1],
+                    'test3' => $scores[2],
+                    'test4' => $scores[3],
+                    'test5' => $scores[4],
+                    'termT' => $termName,
+                    'yearT' => $yearName,
+                ]
+            );
+        } elseif ($request->type === 'exam') {
+            $value = $sheet->getCell("G{$row}")->getValue();
+
+            // Validate exam score
+            if ($value === null || $value === '') {
+                $score = null;
+            } elseif (!is_numeric($value) || $value < 0 || $value > 100) {
+                return redirect()->back()->with('invalid', "Invalid exam  score for student {$student->index_number} at row {$row}, column G. Must be 0-100 or empty.");
+            } else {
+                $score = (int)$value;
+            }
+            $testDetails = Test::where('studentT', $student->id)
+                ->where('termT', $termName)
+                ->where('yearT', $yearName)
+                ->first();
+
+            Exam::updateOrCreate(
+                [
+                    'studentE' => $student->id,
+                    'subjectE' => $request->subject_name,
+                    'classE'   => $student->class_name,
+                ],
+                [
+                    'score' => $score,
+                    'test'  => $testDetails->test_avg ?? null,
+                    'termE' => $termName,
+                    'yearE' => $yearName,
+                ]
+            );
+        }
+    }
+
+    return redirect(route('test_index'))
+        ->with('success', 'Marks uploaded successfully for subject: ' . strtoupper($request->subject_name));
+}

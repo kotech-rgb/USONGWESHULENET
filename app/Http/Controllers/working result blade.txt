@@ -1,0 +1,144 @@
+working result blade.txt@php
+    $title = 'Result Preview';
+    $termName = \DB::table('terms')->where('status', 'active')->value('term_name');
+    $yearName = \DB::table('years')->where('status', 'active')->value('year_name');
+    $activeYear = ($yearName - 1) . '/' . $yearName;
+    $School_details = \DB::table('configurations')->first();
+    $hasQueryParams = request()->has(['class_name']);
+    $heading="REVIEW YA MATOKEO YA WANAFUNZI";
+
+@endphp
+
+@extends('layouts.app')
+@section('title', $title)
+
+<style>
+    label {
+        font-size: 0.8rem;
+    }
+    .form-floating > label {
+        padding: 0.25rem 0.75rem;
+    }
+    .custom-card {
+        border: 1px solid #e1e1e1;
+        border-radius: 0.5rem;
+        background: #fff;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f9f9f9;
+    }
+</style>
+
+@section('content')
+<div class="container-fluid mt-2">
+    @if(!$hasQueryParams)
+        <div class="custom-card">
+            <form method="GET" action="{{ route('result_index') }}">
+                <div class="row g-3 align-items-end">
+                    <!-- Class Select -->
+                    <div class="col-md-3">
+                        <div class="form-floating">
+                            <select class="form-select select2" name="class_name" required>
+                                <option value="" selected></option>
+                                 @if(Auth()->user()->role=="Teacher") 
+                                    @foreach($Myclasses as $row)
+                                        <option value="{{ $row }}">{{ $row }}</option>
+                                    @endforeach
+                                    @else
+                                @foreach($classes as $row)
+                                    <option value="{{ $row }}">{{ $row }}</option>
+                                @endforeach
+                                @endif
+                            </select>
+                            <label for="class_name">Select Class</label>
+                        </div>
+                    </div>
+
+                    <!-- Search Button -->
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    @else
+        <div class="shadow-sm p-2">
+        <button class="btn btn-secondary btn-sm mb-3" onclick="printTable('.printableTable')">
+            <i class="fa fa-print"></i> Print Results
+        </button>
+
+            @include('print_header')
+        
+        <div class="table-responsive">
+            <table id="example" class="table table-bordered table-sm table-hover printableTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Student Name</th>
+                        <th>Gender</th>
+                        <th>Subjects & Grades</th>
+                        <th>Average Score</th>
+                        <th>Average Grade</th>
+                        <th>Total Points</th>
+                        <th>Division</th>
+                        <th>Position</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($results as $student)
+                        <tr>
+                            <td><strong> {{ $School_details->school_reg}}.{{ str_pad($student['indexNO'], 4, '0', STR_PAD_LEFT) }}</strong></td>
+                            <td>{{ $student['fullname'] }}</td>
+                            <td>{{ $student['gender'] }}</td>
+                            <td>{{ $student['subjects'] }}</td>
+                            <td>{{ $student['average_score'] }}</td>
+                            <td>{{ $student['average_grade'] }}</td>
+                            <td>{{ $student['total_points'] ?? '-' }}</td>
+                            <td>{{ $student['division'] }}</td>
+                            <td>{{ $student['position'] }}</td> 
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+</div>
+
+<script>
+function printTable(tableClass) {
+    var table = document.querySelector(tableClass);
+    if (!table) return;
+
+    var tableContent = table.outerHTML;
+    var style = `
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+            .report-header { text-align: center; border-bottom: 2px solid #4CAF50; margin-bottom: 20px; }
+            .report-header h1 { margin: 0; font-size: 20px; }
+            .report-header h2 { margin: 0; font-size: 16px; color: #555; }
+            table { width: 100%; border-collapse: collapse; }
+            table, th, td { border: 1px solid #555; }
+            th, td {font-size: 10px; }
+            tr:nth-child(even) { background-color: #f2f2f2; }
+        </style>
+    `;
+
+    var win = window.open('', '', 'height=700,width=900');
+    win.document.write('<html><head><title>Print Result</title>');
+    win.document.write(style);
+    win.document.write('</head><body>');
+    win.document.write(`
+        ${`{!! view('print_header')->render() !!}`}
+    `);
+    win.document.write(tableContent);
+    win.document.write('</body></html>');
+    win.document.close();
+    win.print();
+}
+</script>
+@endsection

@@ -1,0 +1,592 @@
+
+<div id="printArea" style="display:none;">
+   {{-- Reports --}}
+    @foreach($results as $students)
+         <div class="page-break" style="border:solid; border-color: #007BFF; border-style: dotted; border-width: 7px; padding: 10px;"> 
+
+                <table style="border-collapse: collapse; border: none; width: 100%;">
+                <tr>
+                    <td style="border: none; width: 60px;">
+                        <img src="{{ $School_details->logo ?? '/assets/img/nembo.jpg' }}" alt="School Logo" class="school-logo" style="width:80px;">
+                    </td>
+                    <td style="border: none; text-align: center; padding: 10px;">
+                        <h3 style="margin: 0; font-size: 18px; font-weight: bold;">
+                            PRESIDENT'S OFFICE <br> REGIONAL ADMINISTRATION AND LOCAL GOVERNMENT
+                        </h3>
+                        <p style="margin: 4px 0; font-size: 14px;">
+                            {{ $School_details->location }}
+                        </p>
+                        <p style="margin: 4px 0; font-size: 14px;">
+                            {{ $School_details->school_name }} - {{ $School_details->school_reg }}
+                        </p>
+                        <p style="margin: 4px 0; font-size: 14px; font-weight: bold;">
+                            {{ $termName }} EXAMINATION RESULTS – {{ $yearName }}
+                        </p>
+                    </td>
+                    <td style="border: none; text-align:center;">
+                        {!! QrCode::size(80)->generate(
+                            "Student: {$student->firstname} {$student->lastname}\n".
+                            "Class: {$student->class_name}\n".
+                            "Term: {$student->term}, Year: {$student->year}\n".
+                            "Position: {$student->position}\n".
+                            "Division: {$student->division}\n".
+                            "Total Points: {$student->total_points}\n".
+                            "Scores: {$student->score_details}"
+                        ) !!}
+                    </td>
+                </tr>
+         </table>
+        <hr>
+        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; width: fit-content; font-size: 14px;">
+            <p style="margin: 4px 0;">
+                <strong style="display: inline-block; width: 120px;">Jina:</strong>
+                {{ strtoupper($student->firstname.' '.$student->middlename.' '.$student->lastname) }}
+            </p>
+            <p style="margin: 4px 0;">
+                <strong style="display: inline-block; width: 120px;">Namba:</strong>
+                {{ $School_details->school_reg }}.{{ str_pad($student->index_number, 4, '0', STR_PAD_LEFT) }}
+            </p>
+            <p style="margin: 4px 0;">
+                <strong style="display: inline-block; width: 120px;">Darasa:</strong>
+                {{ $student->class_name }}
+            </p>
+        </div>
+
+
+        {{-- Results Table --}}
+        <table class="table table-sm table-compact text-center align-middle necta-table">
+            <thead>
+                <tr><td colspan="5"><strong>A: MATOKEO YA MTIHANI</strong></td></tr>
+                <tr>
+                    <th>SOMO</th>
+                    <th>ALAMA</th>
+                    <th>DARAJA</th>
+                    <th>NAFASI KATIKA SOMO</th>
+                    <th>MAONI</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(explode(',', $student->score_details) as $subjectDetail)
+                    @php
+                        preg_match('/^(.+)-(\d+)\(([A-Z])\)$/', trim($subjectDetail), $matches);
+                        $teacherComment = 'Aongeze bidii';
+                    @endphp
+                    @if(count($matches) === 4)
+                        @php
+                            $subject = $matches[1];
+                            $score   = $matches[2];
+                            $grade   = $matches[3];
+
+                            $subjectData = $student->subject_positions[$subject] ?? null;
+                            $pos = $subjectData['position'] ?? '-';
+                        @endphp
+
+                        <tr>
+                            <td style="text-align:left;">{{ $subject }}</td>
+                            <td>{{ $score }}</td>
+                            <td>{{ $grade }}</td>
+                            <td>{{ $pos }}/{{ $totalStudentsInClass }}</td>
+                            <td style="text-align:left;">
+                                @switch($grade)
+                                    @case('A') Nzuri Sana @break
+                                    @case('B') Nzuri @break
+                                    @case('C') Kawaida, Aongeze Bidii @break
+                                    @case('D') Dhaifu, Amefeli @break
+                                    @case('E') Dhaifu Sana @break
+                                    @case('S') Dhaifu Sana @break
+                                    @case('F') Dhaifu Sana @break
+                                    @default Undefined
+                                @endswitch
+                            </td>
+                        </tr>
+                    @else
+                        @php
+                            preg_match('/\(([A-F])\)/', $subjectDetail, $matches);
+                            $gradeLetter = $matches[1] ?? null;
+                            $teacherComment = match($gradeLetter) {
+                                'A' => 'Amejitahidi sana',
+                                'B' => 'Amejitahidi aongeze bidii zaidi',
+                                'C' => 'Aongeze bidii anaweza',
+                                'D' => 'Juhudi kubwa zinahitajika aweke juhudi sana',
+                                'E' => 'Juhudi kubwa zinahitajika aweke juhudi sana',
+                                'S' => 'Juhudi kubwa ifanyike',
+                                'F' => 'Amefeli sana, Anahitaji usimamizi wa karibu',
+                                default => 'Undefined comment',
+                            };
+                        @endphp
+                        <tr>
+                            <td colspan="5" class="text-start">{{ trim($subjectDetail) }}</td>
+                        </tr>
+                    @endif
+                @endforeach
+            </tbody>
+        </table>
+
+        {{-- Summary --}}
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px;">
+            <thead>
+                <tr>
+                    <td colspan="2" style="padding: 8px; text-align: center; font-weight: bold; border: 1px solid #ccc;">
+                        AMESHIKA NAFASI YA <strong style="color:#007BFF">{{ number_format($student->position) }}</strong> KATI YA WANAFUNZI 
+                        <strong style="color:#007BFF">{{ number_format($totalStudentsInClass) }}</strong> KATIKA DARASA LAKE
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ccc; width: 50%; text-align: center;">
+                        DIVISION: <strong>{{ $student->division }}</strong>
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #ccc; width: 50%; text-align: center;">
+                        POINTS: <strong>{{ $student->total_points ?? 'Less subjects' }}</strong>
+                    </td>
+                </tr>
+            </thead>
+        </table>
+
+<table style="border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 12px;">
+    <tr>
+        <!-- Behaviours Section -->
+        <td style="vertical-align: top; width: 50%; padding-right: 5px;">
+            @php
+            $behaviours = [
+                "Bidii ya Kazi","Mahudhulio darasani","Kutunza Mali za Shule","Utii kazini/darasani",
+                "Ushirikiano","Heshima kwa wote","Kumudu uongozi","Adabu","Kujua usafi Binafsi",
+                "Kukubali ushauri","Kuthamini kazi","Kujituma","Kushiriki Michezo"
+            ];
+            @endphp
+            <table style="border-collapse: collapse; table-layout: auto; width: 100%;">
+                <thead>
+                    <tr style="background: #e6f0ff; text-align: center; font-weight: bold;">
+                        <th colspan="2" style="padding: 4px; border: 1px solid #ccc;">B: TABIA NA MWENENDO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($behaviours as $subject)
+                        <tr>
+                            <td style="padding: 2px 4px; border: 1px solid #ccc;">{{ $subject }}</td>
+                            <td style="padding: 2px 4px; border: 1px solid #ccc; text-align: center;">
+                                {{ ['A','B','C'][array_rand(['A','B','C'])] }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </td>
+
+        <!-- Grade Interpretation Section -->
+        <td style="vertical-align: top; width: 50%; padding-left: 5px;">
+            <table style="border-collapse: collapse; table-layout: auto; width: 100%;">
+                <thead>
+                    <tr style="background: #e6f0ff; text-align: center; font-weight: bold;">
+                        <th colspan="3" style="padding: 4px; border: 1px solid #ccc;">C: TAFSIRI YA VIWANGO VYA UFAULU</th>
+                    </tr>
+                    <tr style="background: #f2f2f2; text-align: center; font-weight: bold;">
+                        <th style="padding: 3px; border: 1px solid #ccc;">ALAMA</th>
+                        <th style="padding: 3px; border: 1px solid #ccc;">DARAJA</th>
+                        <th style="padding: 3px; border: 1px solid #ccc;">MAELEZO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php
+                        $form = request()->query('class');
+                        preg_match('/FORM\s+\w+/i', $form ?? '', $matches);
+                        $baseForm = $matches[0] ?? '';
+                        $level = in_array($baseForm, ['FORM FIVE','FORM SIX']) ? 'A-level' : 'O-level';
+                        $grades = \DB::table('grades')->where('level', $level)->get();
+                    @endphp
+                    @foreach($grades as $row)
+                        <tr>
+                            <td style="padding: 2px 4px; border: 1px solid #ccc; text-align: center;">
+                                {{ $row->start_form . '-' . $row->end_to }}
+                            </td>
+                            <td style="padding: 2px 4px; border: 1px solid #ccc; text-align: center;">
+                                {{ $row->name }}
+                            </td>
+                            <td style="padding: 2px 4px; border: 1px solid #ccc;">
+                                @switch($row->name)
+                                    @case('A') Nzuri Sana @break
+                                    @case('B') Nzuri @break
+                                    @case('C') Kawaida, Aongeze Bidii @break
+                                    @case('D') Dhaifu, Amefeli @break
+                                    @case('E') Dhaifu, Amefeli @break
+                                    @case('F') Dhaifu Sana @break
+                                    @default Undefined
+                                @endswitch
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </td>
+    </tr>
+</table>
+
+
+<div style="font-size: 12px; line-height: 1.3; margin-top: 15px; width: 100%;">
+
+    <!-- School closure info -->
+    <p style="margin: 4px 0; text-align: center;">
+        SHULE IMEFUNGA LEO TAREHE 
+        <u style="text-decoration-style: dotted; padding: 0 4px;">{{ $School_details->close_school }}</u>
+        NA ITAFUNGULIWA TAREHE 
+        <u style="text-decoration-style: dotted; padding: 0 4px;">{{ $School_details->open_school }}</u>
+    </p>
+
+    <!-- Comments Section -->
+    <table style="width: 100%; border-collapse: collapse; margin-top: 5px;">
+        <tr>
+            <!-- Teacher Comment -->
+            <td style="width: 50%; vertical-align: top; padding-right: 10px;">
+                <p style="margin: 2px 0;"><strong>Maoni ya mwalimu wa darasa:</strong> 
+                    <u style="text-decoration-style: dotted; padding: 0 4px;">{{ $teacherComment }}</u>
+                </p><br>
+                <img src="{{ $headmasterSignature ?? '/assets/img/saini.png' }}" alt="Headmaster Signature" style="height: 30px; display: block; margin-top: 2px; text-align: center; width: 50%;">
+            </td>
+
+            <td style="width: 50%; vertical-align: top; padding-left: 10px;">
+                <p style="margin: 2px 0;"><strong>Maoni ya Mkuu wa shule:</strong> 
+                    <u style="text-decoration-style: dotted; padding: 0 4px;">{{ $teacherComment }}</u>
+                </p>
+                <img src="{{ $headmasterSignature ?? '/assets/img/mkuu.png' }}" alt="Headmaster Signature" style="height: 30px; display: block; margin-top: 2px; text-align: center; width: 50%;">
+        </tr>
+    </table>
+
+  </div>
+</div>
+    @endforeach
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@php
+    $title = 'Student Report';
+    $School_details = \DB::table('configurations')->first();
+    $hasQueryParams = request()->has(['class','year','term']);
+    $terms = \DB::table('terms')->get();
+    $years = \DB::table('years')->get();
+@endphp
+
+@extends('layouts.app')
+@section('title', $title)
+
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: #fff;
+        font-size: 13px;
+    }
+    .necta-table { border-collapse: collapse; width: 100%; }
+    .necta-table th, .necta-table td { border: 1px solid #333; padding: 2px 6px; font-size: 0.6rem; }
+    .necta-table thead th { font-weight: bold; }
+    .necta-table tbody tr:nth-child(even) { background-color: #f8f8f8; }
+
+    .report-card {
+        max-width: 900px;
+        margin: 20px auto;
+        padding: 20px;
+        border: 1px solid #000;
+    }
+    .header-title {
+        font-weight: 600;
+        font-size: 15px;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+    }
+    .sub-header { font-size: 12px; margin-bottom: 0; }
+    .table-compact th, .table-compact td {
+        padding: 3px 6px !important;
+        font-size: 12px;
+        border: 1px solid #000 !important;
+    }
+    .summary-box { border: 1px solid #000; padding: 6px; font-size: 12px; }
+    .signature {
+        border-top: 1px dashed #000;
+        width: 220px;
+        text-align: center;
+        margin-top: 20px;
+        font-size: 11px;
+    }
+    .school-logo { max-height: 80px; }
+
+    @media print {
+        button { display: none; }
+        .page-break { page-break-after: always; }
+        .report-header img { height: 80px; }
+        .report-header h3, .report-header p { margin: 0; }
+        table td, table th {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    }
+</style>
+
+@section('content')
+
+@if(!$hasQueryParams)
+    {{-- Search Form --}}
+    <div class="mb-3 p-3">
+        <form action="{{ route('report.allStudentsReport') }}" method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label"><strong>Term</strong></label>
+                <select name="term" class="form-select" required>
+                    <option value=""></option>
+                    @foreach($terms as $term)
+                        <option value="{{ $term->term_name }}" {{ (isset($termName) && $termName == $term->term_name) ? 'selected' : '' }}>
+                            {{ $term->term_name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"><strong>Year</strong></label>
+                <select name="year" class="form-select" required>
+                    <option value=""></option>
+                    @foreach($years as $year)
+                        <option value="{{ $year->year_name }}" {{ (isset($yearName) && $yearName == $year->year_name) ? 'selected' : '' }}>
+                            {{ $year->year_name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label"><strong>Class</strong></label>
+                <select name="class" class="form-select select2" required>
+                    <option value="">-</option>
+                    @foreach($classes as $row)
+                        <option value="{{ $row }}" {{ (isset($className) && $className == $row) ? 'selected' : '' }}>
+                            {{ $row }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-12 text-end mt-2">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </form>
+    </div>
+@else
+    {{-- Print Button --}}
+    <div class="mb-3" style="margin-left: 8%;">
+       <button class="btn btn-warning no-print mb-3" onclick="printTable()">
+        <i class="ti-printer"></i> Print Reports <i class="fa fa-print"></i>
+    </button>
+    </div>
+    {{-- Reports --}}
+    @foreach($results as $student)
+        <div class="report-container printArea">
+            <div class="report-card">
+                {{-- Header --}}
+                <div class="row align-items-center mb-3">
+                    <div class="col-2 text-start">
+                        <img src="{{ $School_details->logo ?? '/assets/img/nembo.jpg' }}" alt="School Logo" class="school-logo">
+                    </div>
+                    <div class="col-8 text-center">
+                        <div class="header-title">President's Office – Regional Administration and Local Government</div>
+                        <p>{{ $School_details->location }}</p>
+                        <p class="fw-bold">{{ $School_details->school_name.'-'.$School_details->school_reg }}</p>
+                        <p class="fw-bold mb-0">{{ $termName }} EXAMINATION RESULTS – {{ $yearName }}</p>
+                    </div>
+                    <div class="col-2 text-center">
+                        {!! QrCode::size(80)->generate(
+                            "Student: {$student->firstname} {$student->lastname}\n".
+                            "Class: {$student->class_name}\n".
+                            "Term: {$student->term}, Year: {$student->year}\n".
+                            "Position: {$student->position}\n".
+                            "Division: {$student->division}\n".
+                            "Total Points: {$student->total_points}\n".
+                            "Scores: {$student->score_details}"
+                        ) !!}
+                    </div>
+                </div>
+                <hr>
+
+                {{-- Student Info --}}
+                <div class="row mb-2 mt-2">
+                    <div class="col-6">
+                        <p>Jina Kamili: <strong>{{ strtoupper($student->firstname.' '.$student->middlename.' '.$student->lastname) }}</strong></p>
+                        <p>Namba ya Mtihani: <strong>{{ $School_details->school_reg }}.{{ str_pad($student->index_number, 4, '0', STR_PAD_LEFT) }}</strong></p>
+                        <p>Darasa: <strong>{{ $student->class_name }}</strong></p>
+                    </div>
+                </div>
+
+                {{-- Results Table --}}
+                <table class="table table-sm table-compact text-center align-middle necta-table">
+                    <thead>
+                        <tr><td colspan="5"><strong>A: MATOKEO YA MTIHANI</strong></td></tr>
+                        <tr>
+                            <th>SOMO</th>
+                            <th>ALAMA</th>
+                            <th>DARAJA</th>
+                            <th>NAFASI KATIKA SOMO</th>
+                            <th>MAONI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach(explode(',', $student->score_details) as $subjectDetail)
+                            @php
+                                preg_match('/^(.+)-(\d+)\(([A-Z])\)$/', trim($subjectDetail), $matches);
+                                $teacherComment = 'Aongeze bidii';
+                            @endphp
+                            @if(count($matches) === 4)
+                                @php
+                                    $subject = $matches[1];
+                                    $score   = $matches[2];
+                                    $grade   = $matches[3];
+
+                                    $subjectData = $student->subject_positions[$subject] ?? null;
+                                    $pos = $subjectData['position'] ?? '-';
+                                @endphp
+
+                                <tr>
+                                    <td style="text-align:left;">{{ $subject }}</td>
+                                    <td>{{ $score }}</td>
+                                    <td>{{ $grade }}</td>
+                                    <td>{{ $pos }}/{{ $totalStudentsInClass }}</td>
+                                    <td style="text-align:left;">
+                                        @switch($grade)
+                                            @case('A') Nzuri Sana @break
+                                            @case('B') Nzuri @break
+                                            @case('C') Kawaida, Aongeze Bidii @break
+                                            @case('D') Dhaifu, Amefeli @break
+                                            @case('E') Dhaifu Sana @break
+                                            @case('S') Dhaifu Sana @break
+                                            @case('F') Dhaifu Sana @break
+                                            @default Undefined
+                                        @endswitch
+                                    </td>
+                                </tr>
+                            @else
+                                @php
+                                    preg_match('/\(([A-F])\)/', $subjectDetail, $matches);
+                                    $gradeLetter = $matches[1] ?? null;
+                                    $teacherComment = match($gradeLetter) {
+                                        'A' => 'Amejitahidi sana',
+                                        'B' => 'Amejitahidi aongeze bidii zaidi',
+                                        'C' => 'Aongeze bidii anaweza',
+                                        'D' => 'Juhudi kubwa zinahitajika aweke juhudi sana',
+                                        'E' => 'Juhudi kubwa zinahitajika aweke juhudi sana',
+                                        'S' => 'Juhudi kubwa ifanyike',
+                                        'F' => 'Amefeli sana, Anahitaji usimamizi wa karibu',
+                                        default => 'Undefined comment',
+                                    };
+                                @endphp
+                                <tr>
+                                    <td colspan="5" class="text-start">{{ trim($subjectDetail) }}</td>
+                                </tr>
+                            @endif
+                        @endforeach
+                    </tbody>
+                </table>
+
+                {{-- Summary --}}
+                <table class="table table-sm table-compact">
+                    <thead>
+                        <tr>
+                            <td colspan="2">AMESHIKA NAFASI YA <strong>{{ $student->position }}</strong> KATI YA WANAFUNZI <strong>{{ $totalStudentsInClass }}</strong> KATIKA DARASA LAKE</td>
+                        </tr>
+                        <tr>
+                            <td>DIVISION: <strong>{{ $student->division }}</strong></td>
+                            <td>POINTS: <strong>{{ $student->total_points ?? 'Less subjects' }}</strong></td>
+                        </tr>
+                    </thead>
+                </table>
+
+                {{-- Behaviour --}}
+                <div class="row">
+                    <div class="col-md-6">
+                        @php
+                            $behaviours = [
+                                "Bidii ya Kazi","Mahudhulio darasani","Kutunza Mali za Shule","Utii kazini/darasani",
+                                "Ushirikiano","Heshima kwa wote","Kumudu uongozi","Adabu","Kujua usafi Binafsi",
+                                "Kukubali ushauri","Kuthamini kazi","Kujituma","Kushiriki Michezo"
+                            ];
+                        @endphp
+                        <table class="table table-sm table-compact">
+                            <thead>
+                                <tr><th colspan="2" class="text-center">B: TABIA NA MWENENDO</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach($behaviours as $i => $subject)
+                                    <tr>
+                                        <td>{{ $subject }}</td>
+                                        <td>{{ ['A','B','C'][array_rand(['A','B','C'])] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="col-md-6">
+                        <table class="table table-sm table-compact">
+                            <thead>
+                                <tr><th colspan="3" class="text-center">C: TAFSIRI YA VIWANGO VYA UFAULU</th></tr>
+                                <tr><th>ALAMA</th><th>DARAJA</th><th>MAELEZO</th></tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                    $form = request()->query('class');
+                                    preg_match('/FORM\s+\w+/i', $form ?? '', $matches);
+                                    $baseForm = $matches[0] ?? '';
+                                    $level = in_array($baseForm, ['FORM FIVE','FORM SIX']) ? 'A-level' : 'O-level';
+                                    $grades = \DB::table('grades')->where('level', $level)->get();
+                                @endphp
+                                @foreach($grades as $row)
+                                    <tr>
+                                        <td>{{ $row->start_form.'-'.$row->end_to }}</td>
+                                        <td>{{ $row->name }}</td>
+                                        <td>
+                                            @switch($row->name)
+                                                @case('A') Nzuri Sana @break
+                                                @case('B') Nzuri @break
+                                                @case('C') Kawaida, Aongeze Bidii @break
+                                                @case('D') Dhaifu, Amefeli @break
+                                                @case('E') Dhaifu, Amefeli @break
+                                                @case('F') Dhaifu Sana @break
+                                                @default Undefined
+                                            @endswitch
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <p>SHULE IMEFUNGA LEO TAREHE <u style="text-decoration-style: dotted;">{{ $School_details->close_school }}</u> NA ITAFUNGULIWA TAREHE <u style="text-decoration-style: dotted;"> {{ $School_details->open_school }} </u></p>
+
+                {{-- Teacher & Principal Comments --}}
+                <div class="row mt-4" style="font-size:11px;">
+                    <div class="col-6">
+                        <p>Maoni ya mwalimu wa darasa <u style="text-decoration-style: dotted;">{{ $teacherComment }}</u></p>
+                        <p>Sahihi ......................................................</p>
+                    </div>
+                    <div class="col-6">
+                        <p>Maoni ya Mkuu wa shule <u style="text-decoration-style: dotted;">{{ $teacherComment }}</u></p>
+                        <p>Sahihi ......................................................</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endforeach
+        @include('Manage_report.printable')
+        <div class="shadow-sm rounded"> {{ $results->links() }}</div>
+        @include('Manage_report.printScript')
+
+@endif
+@endsection

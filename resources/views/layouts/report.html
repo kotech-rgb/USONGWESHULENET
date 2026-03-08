@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Report</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #fff;
+      font-size: 13px;
+    }
+    .report-card {
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 20px;
+      border: 1px solid #000;
+    }
+    .header-title {
+      font-weight: 600;
+      font-size: 15px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .sub-header {
+      font-size: 12px;
+      margin-bottom: 0;
+    }
+    .table-compact th,
+    .table-compact td {
+      padding: 3px 6px !important; /* tighter padding */
+      font-size: 12px;             /* smaller text */
+      border: 1px solid #000 !important;
+    }
+    .summary-box {
+      border: 1px solid #000;
+      padding: 6px;
+      font-size: 12px;
+    }
+    .signature {
+      border-top: 1px dashed #000;
+      width: 220px;
+      text-align: center;
+      margin-top: 20px;
+      font-size: 11px;
+    }
+    .school-logo {
+      max-height: 80px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="report-card">
+
+  <!-- Header with Logo -->
+  <div class="row align-items-center mb-3">
+    <div class="col-2 text-start">
+      <!-- Replace logo.png with actual school logo path -->
+      <img src="logo.png" alt="School Logo" class="school-logo">
+    </div>
+    <div class="col-8 text-center">
+      <div class="header-title">President's Office – Regional Administration and Local Government</div>
+      <p class="sub-header">USOKE DISTRICT COUNCIL</p>
+      <p class="sub-header">SERENGETI SECONDARY SCHOOL</p>
+      <p class="fw-bold mb-0">FORM THREE TERMINAL EXAMINATION RESULTS – MARCH 2025</p>
+    </div>
+    <div class="col-2"></div>
+  </div>
+
+  <!-- Student Info -->
+  <div class="row mb-2">
+    <div class="col-6">
+      <p><strong>Jina:</strong> Jenifer Rodrick Simwimba</p>
+      <p><strong>Mtihani:</strong> Robo ya 1</p>
+    </div>
+    <div class="col-6 text-end">
+      <p><strong>Nafasi ya Darasa:</strong> 286 / 398</p>
+      <p><strong>Division:</strong> IV (32 Points)</p>
+    </div>
+  </div>
+
+  <!-- Results Table -->
+  <table class="table table-sm table-compact text-center align-middle">
+    <thead>
+      <tr>
+        <th>Masomo</th>
+        <th>Alama</th>
+        <th>Daraja</th>
+        <th>Maoni</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="text-start">Civics</td><td>18</td><td>F</td><td>Dhaifu</td></tr>
+      <tr><td class="text-start">History</td><td>25</td><td>F</td><td>Dhaifu</td></tr>
+      <tr><td class="text-start">Kiswahili</td><td>28</td><td>F</td><td>Dhaifu</td></tr>
+      <tr><td class="text-start">English</td><td>32</td><td>D</td><td>Wastani</td></tr>
+      <tr><td class="text-start">Physics</td><td>40</td><td>D</td><td>Wastani</td></tr>
+      <tr><td class="text-start">Chemistry</td><td>45</td><td>C</td><td>Vizuri</td></tr>
+      <tr><td class="text-start">Book Keeping</td><td>60</td><td>B</td><td>Vizuri</td></tr>
+      <tr><td class="text-start">Literature in English</td><td>75</td><td>A</td><td>Nzuri Sana</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Summary -->
+  <div class="row mt-2">
+    <div class="col-6">
+      <div class="summary-box">
+        <p class="mb-1"><strong>Wastani:</strong> 32 / 100</p>
+        <p class="mb-1"><strong>Jumla ya Point:</strong> 32</p>
+      </div>
+    </div>
+    <div class="col-6 text-end">
+      <div class="summary-box">
+        <p class="mb-1"><strong>Kati ya:</strong> 398 Wanafunzi</p>
+        <p class="mb-1"><strong>Division:</strong> IV</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grading Key -->
+  <div class="mt-3">
+    <p class="fw-bold">Tafsiri ya Viwango vya Ufaulu:</p>
+    <table class="table table-sm table-compact">
+      <tbody>
+        <tr><td>A</td><td>75–100</td><td>Nzuri Sana</td></tr>
+        <tr><td>B</td><td>65–74</td><td>Nzuri</td></tr>
+        <tr><td>C</td><td>45–64</td><td>Wastani</td></tr>
+        <tr><td>D</td><td>30–44</td><td>Dhaifu</td></tr>
+        <tr><td>F</td><td>0–29</td><td>Mbaya</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Footer -->
+  <div class="row mt-4">
+    <div class="col-6">
+      <div class="signature">Sahihi ya Mwalimu</div>
+    </div>
+    <div class="col-6 text-end">
+      <div class="signature">Sahihi ya Mkuu wa Shule</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

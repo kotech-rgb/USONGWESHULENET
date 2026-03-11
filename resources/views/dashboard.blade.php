@@ -13,7 +13,7 @@
 
     /* Compact Dashboard Cards */
     .dashboard-card {
-        background: linear-gradient(135deg, var(--dark-red) 0%, #660000 100%);
+        background: linear-gradient(135deg, var(--dark-red) 0%, black 100%);
         color: var(--pure-white);
         border: none;
         border-radius: 12px;

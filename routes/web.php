@@ -27,7 +27,7 @@ use App\Http\Controllers\MaombiController;
     })->name('logout');
 
 
-    Route::middleware('auth')->group(function () {
+    Route::middleware('auth','check.status')->group(function () {
 
     Route::get('/dashboard', [HomeController::class, 'home'])->name('dashboard');
     Route::get('/Myprofile', [HomeController::class, 'profile'])->name('Myprofile');
@@ -37,6 +37,7 @@ use App\Http\Controllers\MaombiController;
     Route::post('/teachers/save', [Teachers::class, 'teachers_save'])->name('teachers_save');
     Route::get('/teachers', [Teachers::class, 'teachers_index'])->name('teachers_index');
     Route::post('/teachers/edit', [Teachers::class, 'teachers_edit'])->name('teachers_edit');
+    Route::delete('/delete/{id}', [Teachers::class, 'deleteTeacher'])->name('teacher.delete');
 
 
     Route::get('/classes', [ClassController::class, 'class_index'])->name('class_index');

@@ -16,7 +16,7 @@
         
         <table id="example" class="table table-bordered table-sm">
             <thead>
-              <tr>
+             <tr>
                 <th>First Name</th>
                 <th>Middle Name</th>
                 <th>Last Name</th>
@@ -25,9 +25,10 @@
                 <th>Email</th>
                 <th>Region</th>
                 <th>Role</th>
+                <th>Status</th>
                 <th>Issued date</th>
                 <th>Action</th>
-              </tr>
+            </tr>
             </thead>
              @if(count($users))
               <tbody> 
@@ -44,6 +45,13 @@
               <td>{{ $row->email}}</td>
               <td>{{ $row->region}}</td>
               <td>{{ $row->role }}</td>
+              <td>
+              @if($row->status == 'active')
+                  <span class="badge bg-success">Active</span>
+              @else
+                  <span class="badge bg-danger">Suspended</span>
+              @endif
+              </td>
               <td>{{ $row->created_at->format('Y-m-d') }}</td>
               <td>
                 <div class="dropdown" style="font-size: 0.8rem; line-height: 1;">
@@ -53,7 +61,8 @@
                 <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton" style="min-width: 90px; font-size: 0.85rem; padding: 0;">
                   <li><a class="dropdown-item py-1" href="#" data-bs-toggle="modal" data-bs-target="#{{$modalId}}"><i class="fa fa-pencil"></i> Edit</a></li>
                   <li>
-                    <form action="/delete/123" method="POST" onsubmit="return confirm('Are you sure?');">
+                    <form action="{{ route('teacher.delete',$row->id) }}" method="POST" onsubmit="return confirm('Are you sure?');">
+                      @csrf
                       <input type="hidden" name="_method" value="DELETE" />
                       <button type="submit" class="dropdown-item text-danger"><i class="fa fa-trash"></i> Suspend</button>
                     </form>

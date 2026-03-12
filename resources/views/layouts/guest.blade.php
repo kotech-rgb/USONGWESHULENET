@@ -15,7 +15,9 @@
 
 <style>
     :root {
-  --brand-yellow: #FFC104;
+    --brand-yellow: #FFC104;
+    --pure-white: #FFFFFF;
+    --medium-gray: #E0E0E0;
 }
 
 * {
@@ -226,6 +228,19 @@ body {
         pointer-events: none;
         opacity: 0.8;
     }
+
+    .greeting-badge {
+        background: var(--pure-white);
+        border: 1px solid var(--medium-gray);
+        border-radius: 30px;
+        padding: 0.4rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--pure-black);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
 </style>
 </head>
 
@@ -262,7 +277,30 @@ updateClock();
   <!-- Login Section -->
   <div class="login-side">
     <div class="login-form-wrapper">
+       @php
+    $now = \Carbon\Carbon::now('Africa/Dar_es_Salaam');
+    $hour = $now->hour;
 
+    if ($hour >= 5 && $hour < 12) {
+        $greeting = 'Hey! Good Morning';
+        $color="Green";
+    } elseif ($hour >= 12 && $hour < 17) {
+        $greeting = 'Hey! Good Afternoon';
+         $color="Orange";
+    } elseif ($hour >= 17 && $hour < 21) {
+        $greeting = 'Hey! Good Evening';
+         $color="Black";
+    } else {
+        $greeting = 'Hey! Good Night';
+         $color="Green";
+    }
+    @endphp
+        <center>
+        <div class="greeting-badge rounded-pill">
+                <i class="bi bi-hand-thumbs-up-fill"></i>
+                <span><strong>{{ $greeting }}</strong></span>
+            </div>
+        </center>
        {{ $slot }}
 
     </div>

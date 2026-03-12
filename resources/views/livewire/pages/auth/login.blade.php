@@ -31,26 +31,6 @@ new #[Layout('layouts.guest')] class extends Component
 <div>
     <!-- Header -->
     <div class="login-header mb-3 text-center mt-3">
-     @php
-    $now = \Carbon\Carbon::now('Africa/Dar_es_Salaam');
-    $hour = $now->hour;
-
-    if ($hour >= 5 && $hour < 12) {
-        $greeting = 'Good Morning';
-        $color="Green";
-    } elseif ($hour >= 12 && $hour < 17) {
-        $greeting = 'Good Afternoon';
-         $color="Orange";
-    } elseif ($hour >= 17 && $hour < 21) {
-        $greeting = 'Good Evening';
-         $color="Black";
-    } else {
-        $greeting = 'Good Night';
-         $color="Green";
-    }
-    @endphp
-
-        <a style="color: {{ $color }};">Hi, <strong>{{ $greeting }}</strong></a>
         <p>Sign in to access Dashboard</p>
     </div>
 
@@ -63,6 +43,10 @@ new #[Layout('layouts.guest')] class extends Component
                 @endforeach
             </ul>
         </div>
+    @endif
+
+    @if(session('invalid'))
+    <div class="alert alert-danger">{{ session('invalid') }}</div>
     @endif
 
     <!-- Login Form -->

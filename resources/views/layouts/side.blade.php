@@ -9,7 +9,7 @@
     <i class="fa fa-users me-2"></i> Staff Members <i class="fa fa-caret-down float-end"></i>
     </a>
     <div class="collapse submenu" id="staffMenu">
-      <a href="{{ route('teachers_index') }}"><i class="fa fa-angle-right"></i> All</a>
+      <a href="{{ route('teachers_index') }}"><i class="fa fa-angle-right"></i> View Staff</a>
       <a href="{{ route('class_teachers') }}"><i class="fa fa-angle-right"></i> Class teachers</a> 
     </div>
 
@@ -18,7 +18,7 @@
       <i class="fa fa-graduation-cap me-2"></i> Students <i class="fa fa-caret-down float-end"></i>
     </a>
     <div class="collapse submenu" id="studentMenu">
-      <a href="{{ route('student_index') }}"><i class="fa fa-angle-right"></i> All</a>
+      <a href="{{ route('student_index') }}"><i class="fa fa-angle-right"></i> View Students</a>
       <a href="{{ route('student_transfer') }}"><i class="fa fa-angle-right"></i> Transfer</a>
       <a href="{{ route('wafutwe') }}"><i class="fa fa-angle-right"></i> Request delete</a>
     </div>

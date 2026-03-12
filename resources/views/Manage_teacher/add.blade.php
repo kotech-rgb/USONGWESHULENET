@@ -13,10 +13,10 @@
 
 <!-- Modal -->
 <div class="modal fade" id="register" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content shadow-lg rounded-4 border-0">
-      <div class="modal-header text-white rounded-top-4" style="background: #05738E;">
-        <h5 class="modal-title" id="editModalLabel">Register new</h5>
+      <div class="modal-header text-white rounded-top-4" style="background:black;">
+        <h5 class="modal-title" id="editModalLabel">Register new Staff</h5>
       </div>
       <div class="modal-body p-4">
         <form method="POST" action="{{ route('teachers_save') }}">
@@ -87,7 +87,7 @@
         	  <div class="col-sm-6 mb-2 col-6">
         		<div class="form-group">
         			<select class="form-control" name="role" required>
-        				<option hidden selected>--Select role--</option>
+        				<option value="">[ Select Role ]</option>
         				<option value="Teacher">Teacher</option>
         				<option value="Academic">Academic</option>
         				<option value="Headmaster">Headmaster</option>

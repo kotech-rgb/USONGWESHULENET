@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use App\Models\User;
 
 class Teachers extends Controller
@@ -39,10 +40,20 @@ class Teachers extends Controller
        'fname'=>'required|string',
        'mname'=>'required|string',
        'lname'=>'required|string',
-       'phone'=>'required|numeric',
+       'status' =>'required|string',
+        'phone' => [
+            'required',
+            'numeric',
+            Rule::unique('users', 'phone')->ignore($request->id)
+        ],
        'region'=>'required|string',
        'role'=>'required|string',
        'gender'=>'required|string',
+       'email' => [
+            'required',
+            'email',
+            Rule::unique('users', 'email')->ignore($request->id)
+        ],
        ]); 
        User::where('id', $valid['id'])
        ->update([
@@ -53,7 +64,18 @@ class Teachers extends Controller
        'region'=>$valid['region'],
        'role'=>$valid['role'],
        'gender'=>$valid['gender'],
+       'email' =>$valid['email'],
+       'status'=>$valid['status'],
        ]);
        return redirect()->back()->with('success','Changes saved successfully');
+    }
+
+    public function deleteTeacher($id)
+    {
+        User::where('id',$id)->update([
+            'status' => 'suspended'
+        ]);
+
+        return redirect()->back()->with('success', 'Teacher suspended successfully');
     }
 }

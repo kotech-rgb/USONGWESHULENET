@@ -43,6 +43,108 @@
             height: 100vh;
         }
 
+        /* === ORIGINAL GLOBAL LOADER (unchanged) === */
+        #global-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+        }
+        #global-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+        }
+
+        #dashboard-spinner {
+            text-align: center;
+            position: relative;
+        }
+
+        .spinner-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto;
+        }
+
+        .spinner-outer {
+            width: 100%;
+            height: 100%;
+            border: 4px solid rgba(255, 193, 4, 0.1);
+            border-top: 4px solid darkgreen;
+            border-radius: 50%;
+            animation: spin-cw 1s cubic-bezier(0.68,-0.55,0.265,1.55) infinite;
+            position: absolute;
+        }
+
+        .spinner-inner {
+            width: 70%;
+            height: 70%;
+            border: 3px solid transparent;
+            border-bottom: 3px solid #000;
+            border-radius: 50%;
+            position: absolute;
+            top: 15%;
+            left: 15%;
+            animation: spin-ccw 1.2s linear infinite;
+            opacity: 0.8;
+        }
+
+        .spinner-core {
+            width: 12px;
+            height: 12px;
+            background-color: green;
+            border-radius: 50%;
+            position: absolute;
+            top: 44%;
+            left: 44%;
+            box-shadow: 0 0 15px rgba(255, 193, 4, 0.8);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes spin-cw {
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes spin-ccw {
+            100% { transform: rotate(-360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+        }
+
+        #dashboard-spinner p {
+            margin-top: 25px;
+            font-size: 0.9rem;
+            color: #000;
+            font-weight: 700;
+            animation: fadeInOut 2s infinite;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+
         /* Sidebar - redesigned with #FFC104 background and black text */
         .sidebar {
             width: 240px;
@@ -306,6 +408,17 @@
     </style>
 </head>
 <body>
+ <!-- ORIGINAL GLOBAL LOADER (restored exactly) -->
+<div id="global-loader">
+  <div id="dashboard-spinner">
+    <div class="spinner-container">
+      <div class="spinner-outer"></div>
+      <div class="spinner-inner"></div>
+      <div class="spinner-core"></div>
+    </div>
+    <p>Please Wait...</p>
+  </div>
+</div>   
 
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
@@ -405,20 +518,38 @@ $(document).ready(function() {
 </script>
 
 <script>
-document.querySelectorAll("form").forEach(form => {
-    form.addEventListener("submit", function() {
-        let btn = form.querySelector('button[type="submit"]');
-        if (btn && form.checkValidity()) {
-            btn.disabled = true;
-            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processing..`;
-        }
-    });
-});
+// document.querySelectorAll("form").forEach(form => {
+//     form.addEventListener("submit", function() {
+//         let btn = form.querySelector('button[type="submit"]');
+//         if (btn && form.checkValidity()) {
+//             btn.disabled = true;
+//             btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processing..`;
+//         }
+//     });
+// });
 
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('active');
     document.getElementById('overlay').classList.toggle('active');
 }
+</script>
+
+<script>
+    const loader = document.getElementById("global-loader");
+
+    // 🔹 Normal full page navigation
+    window.addEventListener("beforeunload", function () {
+        loader.style.display = "flex";
+        loader.style.opacity = "1";
+    });
+
+    window.addEventListener("load", function () {
+        loader.style.opacity = "0";
+        setTimeout(() => {
+            loader.style.display = "none";
+        }, 300);
+    });
+
 </script>
 
 </body>

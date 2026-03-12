@@ -75,6 +75,26 @@
         	</div>
 
         	<div class="row">
+        	<div class="col-sm-6 mb-2 col-6">
+        		<div class="form-group">
+        			<label>Email Address</label>
+        			<input type="" class="form-control" name="email" value="{{ $row->email }}" required>
+        		</div>
+        	  </div>
+
+        	  <div class="col-sm-6 mb-2 col-6">
+        		<div class="form-group">
+        			<label>Status</label>
+        			<select class="form-control" name="status">
+        				<option value="active"> Active </option>
+        				<option value="suspended"> Suspended Prevent Login</option>
+        			</select>
+        		</div>
+        	  </div>
+
+        	</div>
+
+        	<div class="row">
 
         	  <div class="col-sm-6 mb-2 col-6">
         		<div class="form-group">

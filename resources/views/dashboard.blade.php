@@ -325,7 +325,7 @@
         <div class="col-12">
             <div class="greeting-badge">
                 <i class="bi bi-hand-thumbs-up-fill"></i>
-                <span><strong>{{ $greeting }}</strong>, {{ auth()->user()->name ?? 'Guest' }}</span>
+                <span><strong>{{ $greeting }}</strong>, {{ auth()->user()->fname ?? 'Guest' }}</span>
             </div>
         </div>
     </div>

@@ -38,6 +38,7 @@
         <div class="row g-3">
             <!-- Class Select -->
             <div class="col-md-3 col-sm-6">
+               <label for="class_name">Class</label>
                 <div class="form-floating">
                     <select class="form-select select2" name="class_name" required>
                         <option value="" selected></option>
@@ -51,12 +52,12 @@
                         @endforeach
                         @endif
                     </select>
-                    <label for="class_name">Class</label>
                 </div>
-            </div>
+              </div>
 
             <!-- Subject Select -->
             <div class="col-md-3 col-sm-6">
+                <label for="subject_name">Subject</label>
                 <div class="form-floating">
                     <select class="form-select select2" name="subject_name" required>
                         <option value="" selected></option>
@@ -70,25 +71,24 @@
                         @endforeach
                         @endif
                     </select>
-                    <label for="subject_name">Subject</label>
                 </div>
             </div>
 
             <!-- Type Select -->
             <div class="col-md-3 col-sm-6">
+                <label for="type">Score type</label>
                 <div class="form-floating">
                     <select class="form-select select2" name="type" required>
                         <option value="" selected></option>
                         <option value="test">Test</option>
                         <option value="exam">Exam</option>
                     </select>
-                    <label for="type">Score type</label>
                 </div>
             </div>
 
             <!-- Button -->
             <div class="col-md-2 col-sm-6">
-                <button type="submit" class="btn btn-secondary w-100"> 
+                <button type="submit" class="btn btn-dark w-100 mt-3"> 
                     <i class="fa fa-search"></i> Search
                 </button>
             </div>

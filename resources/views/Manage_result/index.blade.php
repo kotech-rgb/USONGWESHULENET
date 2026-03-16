@@ -15,6 +15,7 @@
             <form method="GET" action="{{ route('result_index') }}">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-3">
+                        <label for="class_name">Select Class</label>
                         <div class="form-floating">
                             <select class="form-select select2" name="class_name" required>
                                 <option value="" selected></option>
@@ -30,7 +31,6 @@
                                 <option value="FORM FOUR GRDADUATE">FORM FOUR GRDADUATE</option>
                                 <option value="FORM SIX GRADUATE">FORM SIX GRADUATE</option>
                             </select>
-                            <label for="class_name">Select Class</label>
                         </div>
                     </div>
                    @php
@@ -38,6 +38,7 @@
                         $terms = \App\Models\Term::orderBy('term_name')->get();
                     @endphp
                     <div class="col-md-3">
+                    <label>Academic Year</label>
                         <div class="form-floating">
                             <select class="form-select select2" name="academic_year" required>
                                 @foreach($years as $year)
@@ -47,11 +48,11 @@
                                 @endforeach
                     
                             </select>
-                            <label>Academic Year</label>
                         </div>
                     </div>
                     
                     <div class="col-md-3">
+                       <label>Select term</label>
                         <div class="form-floating">
                             <select class="form-select select2" name="term" required>
                                 @foreach($terms as $t)
@@ -61,7 +62,6 @@
                                 @endforeach
                     
                             </select>
-                            <label>Select term</label>
                         </div>
                     </div>
                     <div class="col-md-2">

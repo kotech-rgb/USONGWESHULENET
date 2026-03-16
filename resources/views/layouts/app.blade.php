@@ -379,6 +379,7 @@
             font-size: 0.85rem !important;
             border: 1px solid #05738E !important;
         }
+        
 
         /* Responsive (unchanged) */
         @media (max-width: 768px) {

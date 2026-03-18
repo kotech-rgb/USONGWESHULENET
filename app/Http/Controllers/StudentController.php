@@ -180,7 +180,8 @@ public function student_update(Request $request, $id)
 
 public function upload_students(Request $request)
 {
-    $request->validate([
+    try {
+        $request->validate([
         'file'       => 'required|mimes:xlsx,xls,csv',
         'class_name' => 'required|string|max:255',
     ]);
@@ -277,6 +278,10 @@ public function upload_students(Request $request)
         SET s.index_number = LPAD(ranked.seq, 4, '0')
     ", ["{$fullClassName}%"]);
     return back()->with('success', "{$inserted} students added, {$updated} students updated, index numbers reordered!");
+        
+    } catch (Exception $e) {
+        return back()->with('invalid', 'Upload failed: ' . $e->getMessage());
+    }
 }
 
 

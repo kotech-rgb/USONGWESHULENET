@@ -114,6 +114,15 @@
     </div>
 
     <a href="{{ route('configuration.index') }}"><i class="fa fa-cogs me-2"></i> Configurations</a> 
+
+    <a data-bs-toggle="collapse" href="#smsRecharge" role="button" aria-expanded="false" aria-controls="ManagemantSubmenu" id="resultsMenuToggle">
+    <i class="fa fa-comment me-2"></i> Purchase SMS <i class="fa fa-caret-down float-end"></i>
+    </a>
+    <div class="collapse submenu" id="smsRecharge">
+      <a href="{{ route('teachers_index') }}"><i class="fa fa-angle-right"></i> New Recharge</a>
+      <a href="{{ route('class_teachers') }}"><i class="fa fa-angle-right"></i> Recharge History</a> 
+    </div>
+
     @endif
 
      <!-- Results menu with submenu -->

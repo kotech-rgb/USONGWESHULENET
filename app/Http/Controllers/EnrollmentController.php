@@ -15,36 +15,55 @@ class EnrollmentController extends Controller
 {
     
     public function student_subject_index(Request $request)
-    {
-        if ($request->filled('class_name')) {
-            $C = Darasa::where('name', $request->class_name)->get();
-        } else {
-            $C = Darasa::all();
+        {
+            if ($request->filled('class_name')) {
+                $C = Darasa::where('name', $request->class_name)->get();
+            } else {
+                $C = Darasa::all();
+            }
+            
+            $S = Subject::all();
+
+            // Key the array by "ClassName-SubjectName" and set the value as the "status"
+            $E = StudentSubject::all()->pluck('status', 'class_subject_key')->toArray();
+            
+            // Note: If you don't have a 'class_subject_key' helper, use this manual map:
+            $E = StudentSubject::all()->mapWithKeys(function ($item) {
+                return [$item->class_id . '-' . $item->subject_id => $item->status];
+            })->toArray();
+
+            return view('Manage_enrollment.student_subject', compact('C', 'S', 'E'));
         }
-        $S = Subject::all();
-        $E = StudentSubject::all()->map(function ($item) {
-            return $item->class_id . '-' . $item->subject_id;
-        })->toArray();
-        return view('Manage_enrollment.student_subject', compact('C', 'S', 'E'));
-    }
 
 
     public function student_subject_update(Request $request, $class)
-    {
-        $request->validate([
-        'subjects' => 'array',
-        'subjects.*' => 'string|exists:subjects,sub_name',
-        ]);
-        $selectedSubjects = $request->input('subjects', []);
-        StudentSubject::where('class_id', $class)->delete();
-        foreach ($selectedSubjects as $subName) {
-        StudentSubject::create([
-            'class_id' => $class,
-            'subject_id' => $subName,
-        ]);
+        {
+            // 1. Validation: Validate the keys (subject names) and the status values
+            $request->validate([
+                'subjects' => 'array',
+                'subjects.*.status' => 'required|in:core,optional',
+            ]);
+
+            // 2. Clear existing records for this class to refresh the list
+            \App\Models\StudentSubject::where('class_id', $class)->delete();
+
+            // 3. Process the nested array
+            if ($request->has('subjects')) {
+                foreach ($request->subjects as $subName => $data) {
+                    
+                    // 4. ONLY save if the checkbox 'selected' is present for this specific subject
+                    if (isset($data['selected'])) {
+                        \App\Models\StudentSubject::create([
+                            'class_id'   => $class,
+                            'subject_id' => $subName, // Using name as ID per your requirement
+                            'status'     => $data['status'], // Correctly grabs 'core' or 'optional'
+                        ]);
+                    }
+                }
+            }
+
+            return redirect()->back()->with('success', 'Changes saved');
         }
-        return redirect()->back()->with('success', 'Subjects updated successfully for class ' . $class);
-    }
 
 
     public function teacher_subject_index()

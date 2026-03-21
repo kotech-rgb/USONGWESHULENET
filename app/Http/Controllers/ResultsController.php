@@ -47,7 +47,7 @@ public function result_index(Request $request)
     $grades    = DB::table('grades')->where('level', $level)->get();
     $divisions = DB::table('divisions')->where('level', $level)->get();
 
-    // Subjects to exclude for A-level
+    // Subjects to exclude for A-level Division calculation
     $excludedSubjects = [];
     if (in_array($form, ['FORM FIVE', 'FORM SIX'])) {
         $excludedSubjects = DB::table('subjects')
@@ -61,10 +61,12 @@ public function result_index(Request $request)
 
     // --- Process each student ---
     foreach ($students as $student) {
-        $studentSubjects = DB::table('student_subjects')
+        // Fetch student subjects WITH their status (core/optional)
+        $studentSubjectData = DB::table('student_subjects')
             ->where('class_id', $student->class_name)
-            ->pluck('subject_id')
-            ->toArray();
+            ->get();
+
+        $studentSubjects = $studentSubjectData->pluck('subject_id')->toArray();
 
         $exams = DB::table('exams')
             ->where('studentE', $student->id)
@@ -79,6 +81,9 @@ public function result_index(Request $request)
 
         foreach ($studentSubjects as $subjectId) {
             $exam = $exams->first(fn($e) => $e->subjectE == $subjectId);
+            
+            // Get the specific status for this subject
+            $subStatus = $studentSubjectData->firstWhere('subject_id', $subjectId)->status ?? 'core';
 
             if ($exam) {
                 $gradeRecord = $grades->first(fn($g) => $exam->total_average >= $g->start_form && $exam->total_average <= $g->end_to);
@@ -87,39 +92,42 @@ public function result_index(Request $request)
 
                 $subjectGPA[$subjectId] = $gradeRecord?->points;
 
-                if (!in_array($subjectId, $excludedSubjects)) {
-                    $pointsArray[] = $gradeRecord?->points ?? 0;
+                // Only contribute to DIVISION if status is CORE and not in excluded list
+                if ($subStatus === 'core' && !in_array($subjectId, $excludedSubjects)) {
+                    if ($gradeRecord) {
+                        $pointsArray[] = $gradeRecord->points;
+                    }
                 }
             } else {
                 $gradeLetter = 'N/A';
-                $score       = null; // numeric null for compatibility
+                $score       = null;
             }
 
             $subjectGrades[] = "{$subjectId}-{$score}({$gradeLetter})";
-
-            // Populate scores for subject summary
             $subjectStats[$subjectId]['scores'][$student->id] = $score;
             $subjectStats[$subjectId]['student_ids'][] = $student->id;
         }
 
-        // Check if student has all F/N/A → mark ABS
         $allFailing = collect($subjectGrades)->every(fn($sub) => preg_match('/\((F|N\/A)\)$/', $sub));
 
         // Average score/grade
         $averageScore = $allFailing ? 'ABS' : ($exams->isNotEmpty() ? round($exams->avg('total_average'), 0) : 0);
         $averageGrade = $allFailing ? 'ABS' : ($grades->first(fn($g) => $averageScore >= $g->start_form && $averageScore <= $g->end_to)?->name ?? 'N/A');
 
-        // Points & Division
+        // --- Points & Division Logic ---
         $topSubjects  = $level === 'A-level' ? 3 : 7;
-        $pointsArray  = collect($pointsArray)->sort()->take($topSubjects)->all();
-        $totalPoints  = $allFailing ? 'ABS' : (count($pointsArray) >= $topSubjects ? array_sum($pointsArray) : null);
+        
+        // Sort points (1 is best, 5/7 is worst) and take the best required number
+        $bestCorePoints = collect($pointsArray)->sort()->take($topSubjects)->all();
+        
+        // Division is INC if the student doesn't have enough core subjects
+        $totalPoints  = $allFailing ? 'ABS' : (count($bestCorePoints) >= $topSubjects ? array_sum($bestCorePoints) : null);
+        
         $division     = $allFailing ? 'ABS' : ($totalPoints ? $divisions->first(fn($d) => $totalPoints >= $d->start_point && $totalPoints <= $d->end_point)?->div_name ?? 'N/A' : 'INC');
 
         // Overall GPA
         $gpaValues  = array_filter($subjectGPA, fn($v) => $v !== null);
         $overallGPA = $allFailing ? 'ABS' : ($gpaValues ? min(5.0, round(array_sum($gpaValues)/count($gpaValues),2)) : 0);
-        
-        
 
         $results[$student->id] = [
             'student_id'    => $student->id,
@@ -138,7 +146,6 @@ public function result_index(Request $request)
             'allAbsent'     => $allFailing,
         ];
     }
-    
 
     // --- Ranking positions ---
     $positions = collect($results)->pluck('average_score','student_id')->sortDesc();
@@ -150,7 +157,7 @@ public function result_index(Request $request)
             $results[$studentId]['position'] = '-';
         }
     }
-    
+
     // --- Save/approve results ---
     if ($request->filled('approve') && $results) {
         $upsertData = array_map(fn($r) => [
@@ -161,9 +168,9 @@ public function result_index(Request $request)
             'score_details' => $r['subjects'],
             'average_score' => $r['average_score'] === 'ABS' ? 0 : $r['average_score'],
             'average_grade' => $r['average_grade'],
-            'total_points' => $r['total_points'] === 'ABS' ? 0 : $r['total_points'],
+            'total_points'  => $r['total_points'] === 'ABS' ? 0 : ($r['total_points'] ?? 0),
             'division'      => $r['division'],
-            'position' => $r['position'] === '-' ? 0 : $r['position'],
+            'position'      => $r['position'] === '-' ? 0 : $r['position'],
         ], $results);
 
         Result::upsert(
@@ -173,7 +180,6 @@ public function result_index(Request $request)
         );
         return back()->with('success','Results approved and saved.');
     }
-    
 
     // --- Subject-level summary & ranking ---
     $subjectSummary = $this->calculateSubjectSummary($subjectStats, $grades, $level);
@@ -199,7 +205,7 @@ public function result_index(Request $request)
     foreach ($results as $res) {
         if($res['allAbsent'] !== true) {
             $gender = strtoupper($res['gender'][0] ?? 'T');
-            $div = in_array($res['division'],$allowedDivisions) ? $res['division'] : ($res['division'] === 'INC' ? 'INC' : '0');
+            $div = in_array($res['division'],$allowedDivisions) ? $res['division'] : ($res['division'] === 'INC' ? 'INC' : 'O');
             $divisionSummary[$gender][$div]++;
         }
     }
@@ -231,7 +237,7 @@ public function result_index(Request $request)
             $WanafnziSummary['SAT']++;
             $div = strtoupper(trim($r['division']));
             if(in_array($div,['I','II','III','IV'])) $WanafnziSummary['DIV-'.$div]++;
-            elseif($div==='O') $WanafnziSummary['DIV-0']++;
+            elseif($div==='O' || $div==='0') $WanafnziSummary['DIV-0']++;
             elseif($div==='INC') $WanafnziSummary['INC']++;
         }
     }
@@ -241,7 +247,6 @@ public function result_index(Request $request)
         'termName','yearName','grades','subjectStats','WanafnziSummary','subjectSummary','subjects'
     ));
 }
-
 
 
 

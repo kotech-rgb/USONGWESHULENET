@@ -20,59 +20,85 @@ class HomeController extends Controller
 {
     
     public function home()     
-{         
-    $subjects = Subject::all();         
-    $students = Student::all();         
-    $classes  = Darasa::all();         
-    $teachers = User::all();         
-    $user     = Auth()->user();         
-    $myDetails = TeacherSubject::where('teacher', $user->id)->get(); 
-    $teacherSubjects=TeacherSubject::where('teacher',$user->id)->get();
-    $Myclasses = $teacherSubjects->map(function($item) {
-    return preg_replace('/\s+[A-Z]$/', '', $item->class);
-    })->unique()->values();
-    $MySubjects = $teacherSubjects->pluck('subject')->unique()->values();        
-    $term  = Term::where('status','active')->value('term_name');          
-    $year  = Year::where('status','active')->value('year_name');         
+    {         
+        $subjects = Subject::all();         
+        $students = Student::all();         
+        $classes  = Darasa::all();         
+        $teachers = User::all();         
+        $user     = Auth()->user();         
+        $myDetails = TeacherSubject::where('teacher', $user->id)->get(); 
+        $teacherSubjects=TeacherSubject::where('teacher',$user->id)->get();
+        $Myclasses = $teacherSubjects->map(function($item) {
+        return preg_replace('/\s+[A-Z]$/', '', $item->class);
+        })->unique()->values();
+        $MySubjects = $teacherSubjects->pluck('subject')->unique()->values();        
+        $term  = Term::where('status','active')->value('term_name');          
+        $year  = Year::where('status','active')->value('year_name');         
 
-    // payments subquery
-    $paymentsSub = DB::table('student_payments as sp')
-        ->select(
-            'sp.student_id', 
-            DB::raw('SUM(sp.amount) as total_paid'), 
-            DB::raw('MAX(sp.required_amount) as required_amount'),
-            DB::raw('MAX(sp.last_notified) as last_notified') // bring last_notified too
-        )
-        ->where('sp.ac_year', $year)
-        ->where('sp.mhula', $term)
-        ->groupBy('sp.student_id');
+        // payments subquery
+        $paymentsSub = DB::table('student_payments as sp')
+            ->select(
+                'sp.student_id', 
+                DB::raw('SUM(sp.amount) as total_paid'), 
+                DB::raw('MAX(sp.required_amount) as required_amount'),
+                DB::raw('MAX(sp.last_notified) as last_notified') // bring last_notified too
+            )
+            ->where('sp.ac_year', $year)
+            ->where('sp.mhula', $term)
+            ->groupBy('sp.student_id');
 
-    // debtors
-    $debtors = DB::table('students')
-        ->leftJoinSub($paymentsSub, 'p', function ($join) {
-            $join->on('students.id', '=', 'p.student_id');
-        })
-        ->select(
-            'students.id',
-            'students.index_number',
-            'students.gender',
-            'students.phone',
-            'students.firstname',
-            'students.middlename',
-            'students.lastname',
-            DB::raw('COALESCE(p.required_amount, 0) as required_amount'),
-            DB::raw('COALESCE(p.total_paid, 0) as total_paid'),
-            DB::raw('(COALESCE(p.required_amount,0) - COALESCE(p.total_paid,0)) as balance'),
-            'p.last_notified'
-        )
-        ->whereRaw('COALESCE(p.total_paid,0) < COALESCE(p.required_amount,0)')
-        ->orderBy('students.index_number')
-        ->get();
-    $today = Carbon::now()->format('F j, Y'); // e.g., "August 26, 2025"
-    $notifiedTodayCount = $debtors->where('last_notified', $today)->count();
+        // debtors
+        $debtors = DB::table('students')
+            ->leftJoinSub($paymentsSub, 'p', function ($join) {
+                $join->on('students.id', '=', 'p.student_id');
+            })
+            ->select(
+                'students.id',
+                'students.index_number',
+                'students.gender',
+                'students.phone',
+                'students.firstname',
+                'students.middlename',
+                'students.lastname',
+                DB::raw('COALESCE(p.required_amount, 0) as required_amount'),
+                DB::raw('COALESCE(p.total_paid, 0) as total_paid'),
+                DB::raw('(COALESCE(p.required_amount,0) - COALESCE(p.total_paid,0)) as balance'),
+                'p.last_notified'
+            )
+            ->whereRaw('COALESCE(p.total_paid,0) < COALESCE(p.required_amount,0)')
+            ->orderBy('students.index_number')
+            ->get();
+        $today = Carbon::now()->format('F j, Y'); // e.g., "August 26, 2025"
+        $notifiedTodayCount = $debtors->where('last_notified', $today)->count();
 
-    return view('dashboard', compact('subjects','students','classes','teachers','Myclasses','debtors','notifiedTodayCount','MySubjects'));     
-}
+       // --- Group Students by General Form Level (Ignoring Streams & Combinations) ---
+        $formSummary = $students->groupBy(function($student) {
+            // Extract "FORM [WORD]" (e.g., FORM ONE, FORM SIX)
+            if (preg_match('/^FORM\s+\w+/i', strtoupper($student->class_name), $matches)) {
+                return $matches[0];
+            }
+            return 'OTHER'; // Fallback for any non-standard naming
+        })->map(function ($group) {
+            return [
+                'M' => $group->where('gender', 'M')->count(),
+                'F' => $group->where('gender', 'F')->count(),
+                'total' => $group->count(),
+            ];
+        })->sortKeys(); // Keeps them in order: FORM FIVE, FORM FOUR, etc.
+
+        return view('dashboard', compact(
+            'subjects','students','classes','teachers','Myclasses',
+            'debtors','notifiedTodayCount','MySubjects', 'formSummary'
+        ));
+
+        return view('dashboard', compact(
+            'subjects','students','classes','teachers','Myclasses',
+            'debtors','notifiedTodayCount','MySubjects', 'formSummary'
+        ));
+
+
+        return view('dashboard', compact('subjects','students','classes','teachers','Myclasses','debtors','notifiedTodayCount','MySubjects','formSummary'));     
+    }
 
 
     public function profile()

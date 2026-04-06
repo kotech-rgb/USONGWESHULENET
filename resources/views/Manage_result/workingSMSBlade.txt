@@ -1,0 +1,308 @@
+@extends('layouts.app')
+
+@php
+    $title = 'SMS Result Portal';
+    $schoolDetails = \App\Models\Configuration::first();
+    $activeTerm = \DB::table('terms')->where('status', 'active')->first();
+    $activeYear = \DB::table('years')->where('status', 'active')->first();
+
+    $termName = $activeTerm ? $activeTerm->term_name : 'N/A';
+    $yearName = $activeYear ? $activeYear->year_name : date('Y');
+    $hasQueryParams = request()->has(['class_name']);
+    $currentBalance = $schoolDetails->sms_balance ?? 0;
+@endphp
+
+@section('title', 'SMS Portal')
+
+@section('content')
+<style>
+    /* Only sticky sidebar fix – no other custom styles */
+    .sticky-sidebar {
+        position: sticky;
+        top: 20px;
+        align-self: start;
+        z-index: 1020;
+    }
+</style>
+
+<div class="container-fluid py-3">
+
+    {{-- SEARCH --}}
+    <div class="card mb-3">
+        <div class="card-body p-2">
+            <form method="GET" action="{{ route('sms.index') }}" class="d-flex gap-2">
+                <input type="hidden" name="year" value="{{ $yearName }}">
+                <input type="hidden" name="semester" value="{{ $termName }}">
+                <select class="form-select form-select-sm" name="class_name" required>
+                    <option value="">Select Class...</option>
+                    @foreach($classes as $row)
+                        <option value="{{ $row }}" {{ request('class_name') == $row ? 'selected' : '' }}>
+                            {{ $row }}
+                        </option>
+                    @endforeach
+                </select>
+                <button class="btn btn-primary btn-sm">SEARCH</button>
+            </form>
+        </div>
+    </div>
+
+    @if($hasQueryParams)
+    <div class="row">
+        {{-- STUDENTS --}}
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                    <strong>Class: {{ request('class_name') }}</strong>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="masterSelect">
+                        <label class="form-check-label small" for="masterSelect">Select All</label>
+                    </div>
+                </div>
+                <div class="card-body p-2">
+                    <input type="text" id="search" class="form-control form-control-sm mb-2" placeholder="Search student...">
+
+                    <form method="POST" action="{{ route('sms.send') }}" id="form">
+                        @csrf
+                        <input type="hidden" name="year" value="{{ $yearName }}">
+                        <input type="hidden" name="semester" value="{{ $termName }}">
+                        <input type="hidden" name="send_date" id="hidden_date">
+                        <input type="hidden" name="send_time" id="hidden_time">
+
+                        <div class="vstack gap-2">
+                            @foreach($students as $row)
+                            @php
+                                $schoolName = $schoolDetails->school_name ?? 'Shule';
+                                $smsTemplate = trim($schoolDetails->sms_temp ?? '');
+                                $formattedScores = str_replace(', ', "\n", $row->score_details);
+
+                                $msg = "MZAZI WA {$row->firstname} {$row->lastname},\n";
+                                $msg .= "MATOKEO YA MWANAO NI:\n";
+                                $msg .= "{$formattedScores}\n";
+                                $msg .= "Division: {$row->division}, Points: {$row->total_points}\n";
+                                $msg .= $smsTemplate;
+
+                                $length = strlen($msg);
+                                $units = ($length <= 160) ? 1 : ceil($length / 153);
+                                $search = strtolower($row->firstname.' '.$row->lastname);
+                            @endphp
+
+                            <div class="border rounded p-2 student-row"
+                                 data-search="{{ $search }}"
+                                 data-units="{{ $units }}"
+                                 data-msg="{{ $msg }}">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="d-flex flex-column">
+                                        <div class="form-check">
+                                            @if(empty($row->sms))
+                                                <input class="form-check-input cb" type="checkbox"
+                                                       value="{{ $row->student_id }}"
+                                                       name="selected_students[]"
+                                                       id="student_{{ $row->student_id }}">
+                                                <label class="form-check-label fw-bold" for="student_{{ $row->student_id }}">
+                                                    {{ $row->firstname }} {{ $row->lastname }}
+                                                </label>
+                                            @else
+                                                <span class="text-success small">✔ Sent</span>
+                                                <span class="fw-bold">{{ $row->firstname }} {{ $row->lastname }}</span>
+                                            @endif
+                                            <div class="small text-muted">📞 {{ $row->phone ?? 'No phone' }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-secondary">{{ $units }} Unit(s)</span>
+                                        <button type="button" class="btn btn-sm btn-outline-info preview">Preview</button>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- SIDEBAR (Sticky) --}}
+        <div class="col-lg-4 sticky-sidebar">
+            <div class="card bg-light text-dark">
+                <div class="card-body">
+                    <h5 class="card-title">SCHEDULE YOUR SMS</h5>
+                    <hr>
+                    <table class="table table-bordered table-sm text-dark">
+                        <thead>
+                            <tr>
+                                <th>SMS BALANCE</th>
+                                <th>Selected</th>
+                                <th>Req units</th>
+                                <th>Remains</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-success"><strong id="balance">{{ $currentBalance }}</strong></span></td>
+                                <td><span class="badge bg-info" id="count">0</span></td>
+                                <td><span class="badge bg-warning" id="cost">0</span></td>
+                                <td><span class="badge bg-danger" id="remain">0</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <span class="small text-muted">Tafadhali chagua muda wa kuanza kutuma SMS. Muda uwe angalau dakika 20 kuanzia sasa.</span>
+                    <input type="date" id="date" class="form-control form-control-sm mb-2" value="{{ date('Y-m-d') }}">
+                    <input type="time" id="time" class="form-control form-control-sm mb-2">
+                    
+                    {{-- Dynamic delivery message --}}
+                    <div id="deliveryMessage" class="alert alert-info small py-2 mt-1 mb-2" style="font-size:0.8rem;">
+                        <!-- Will be filled by JavaScript -->
+                    </div>
+                    
+                    <button class="btn btn-primary w-100" id="sendBtn" disabled>SEND</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
+
+{{-- MODAL --}}
+<div class="modal fade" id="modal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">SMS Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="modalText" class="bg-light p-2 rounded" style="white-space:pre-wrap;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const checkboxes = document.querySelectorAll('.cb');
+    const master = document.getElementById('masterSelect');
+    const balance = parseInt(document.getElementById('balance')?.innerText || 0);
+    const dateInput = document.getElementById('date');
+    const timeInput = document.getElementById('time');
+    const deliveryDiv = document.getElementById('deliveryMessage');
+
+    // Helper: format time as HH:MM
+    function formatTime(date) {
+        return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Helper: get relative delivery description
+    function getDeliveryDescription(selectedDate, selectedTime) {
+        if (!selectedDate || !selectedTime) return 'Select date and time to see delivery info.';
+        
+        const now = new Date();
+        const scheduled = new Date(selectedDate + 'T' + selectedTime);
+        
+        // Check if scheduled time is in the past (including 20 min rule)
+        const minTime = new Date(now.getTime() + 20 * 60000);
+        if (scheduled < minTime) {
+            return 'Scheduled time must be at least 20 minutes from now.';
+        }
+        
+        // Calculate difference in days (ignore time)
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const scheduleDate = new Date(scheduled.getFullYear(), scheduled.getMonth(), scheduled.getDate());
+        const diffDays = Math.round((scheduleDate - today) / (1000 * 60 * 60 * 24));
+        
+        const timeStr = formatTime(scheduled);
+        
+        if (diffDays === 0) {
+            return `Your SMS will start delivery: <strong>Today at ${timeStr}</strong>`;
+        } else if (diffDays === 1) {
+            return `Your SMS will start delivery: <strong>Tomorrow at ${timeStr}</strong>`;
+        } else if (diffDays <= 7) {
+            const options = { weekday: 'long' };
+            const dayName = scheduled.toLocaleDateString(undefined, options);
+            return `Your SMS will start delivery: <strong>This week on ${dayName} at ${timeStr}</strong>`;
+        } else if (diffDays <= 30) {
+            return `Your SMS will start delivery: <strong>This month on ${scheduled.toLocaleDateString()} at ${timeStr}</strong>`;
+        } else {
+            return `Your SMS will start delivery: <strong>on ${scheduled.toLocaleDateString()} at ${timeStr}</strong>`;
+        }
+    }
+
+    function updateDeliveryMessage() {
+        const dateVal = dateInput.value;
+        const timeVal = timeInput.value;
+        if (dateVal && timeVal) {
+            deliveryDiv.innerHTML = getDeliveryDescription(dateVal, timeVal);
+        } else {
+            deliveryDiv.innerHTML = 'Select date and time to see delivery schedule.';
+        }
+    }
+
+    // Update function for balance, cost, etc.
+    function update(){
+        let count = 0, cost = 0;
+        checkboxes.forEach(cb => {
+            if(cb.checked){
+                count++;
+                cost += parseInt(cb.closest('.student-row').dataset.units);
+            }
+        });
+        document.getElementById('count').innerText = count;
+        document.getElementById('cost').innerText = cost;
+        document.getElementById('remain').innerText = balance - cost;
+
+        const date = dateInput.value;
+        const time = timeInput.value;
+        let valid = false;
+        if(date && time){
+            let d = new Date(date + "T" + time);
+            let now = new Date();
+            now.setMinutes(now.getMinutes() + 20);
+            valid = d >= now;
+        }
+        document.getElementById('sendBtn').disabled = !(count > 0 && cost <= balance && valid);
+        
+        // Also update delivery message when date/time or selection changes
+        updateDeliveryMessage();
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', update));
+    master?.addEventListener('change', () => {
+        checkboxes.forEach(cb => {
+            if(window.getComputedStyle(cb.closest('.student-row')).display !== 'none'){
+                cb.checked = master.checked;
+            }
+        });
+        update();
+    });
+
+    // Listen to date and time changes
+    dateInput?.addEventListener('change', update);
+    timeInput?.addEventListener('change', update);
+    
+    // Initial call to set delivery message
+    updateDeliveryMessage();
+
+    document.querySelectorAll('.preview').forEach(btn => {
+        btn.onclick = function(){
+            document.getElementById('modalText').innerText =
+                this.closest('.student-row').dataset.msg;
+            new bootstrap.Modal(document.getElementById('modal')).show();
+        };
+    });
+
+    document.getElementById('sendBtn')?.addEventListener('click', function(){
+        document.getElementById('hidden_date').value = dateInput.value;
+        document.getElementById('hidden_time').value = timeInput.value;
+        if(confirm('Send SMS?')){
+            document.getElementById('form').submit();
+        }
+    });
+
+    document.getElementById('search')?.addEventListener('keyup', function(){
+        let val = this.value.toLowerCase();
+        document.querySelectorAll('.student-row').forEach(row => {
+            row.style.display = row.dataset.search.includes(val) ? 'block' : 'none';
+        });
+    });
+});
+</script>
+@endsection

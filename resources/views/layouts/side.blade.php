@@ -119,8 +119,8 @@
     <i class="fa fa-comment me-2"></i> Purchase SMS <i class="fa fa-caret-down float-end"></i>
     </a>
     <div class="collapse submenu" id="smsRecharge">
-      <a href="{{ route('teachers_index') }}"><i class="fa fa-angle-right"></i> New Recharge</a>
-      <a href="{{ route('class_teachers') }}"><i class="fa fa-angle-right"></i> Recharge History</a> 
+      <a href="{{ route('sms.recharge.home') }}"><i class="fa fa-angle-right"></i> New Recharge</a>
+      <a href="{{ route('recharge.history') }}"><i class="fa fa-angle-right"></i> Recharge History</a> 
     </div>
 
     @endif

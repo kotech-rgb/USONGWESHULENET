@@ -13,6 +13,7 @@ use App\Http\Controllers\GradingController;
 use App\Http\Controllers\SMSController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\MaombiController;
+use App\Http\Controllers\PaymentWebhookController;
 
     Route::get('/', function () {
     // return redirect()->route('login');
@@ -101,6 +102,16 @@ use App\Http\Controllers\MaombiController;
     Route::get('/SMS/index', [SMSController::class, 'index'])->name('sms.index'); 
     Route::post('/SMS/send', [SMSController::class, 'messaging'])->name('sms.send'); 
     
+    //RECHARGE SMS ROUTES
+    Route::get('/sms/recharge', [SMSController::class, 'recharge_home'])->name('sms.recharge.home');
+    Route::post('/recharge/store', [SMSController::class, 'store_recharge'])->name('recharge.store');
+    Route::get('/recharge/status/{ref}XYZPNTWGHJS', [SMSController::class, 'recharge_status'])->name('recharge.status');
+    Route::get('/recharge/history', [SMSController::class, 'recharge_history'])->name('recharge.history');
+
+
+    // AJAX SENDING SMS 20 BATCHS
+    Route::post('/sms/send-batch', [SmsController::class, 'sendBatch'])->name('sms.sendBatch');
+
 
     // Fees
     Route::get('/fees', [PaymentController::class, 'indexFees'])->name('fees.index');
@@ -116,6 +127,15 @@ use App\Http\Controllers\MaombiController;
     Route::get('/debtors/notify', [PaymentController::class, 'debtors_index'])->name('debtors.index');
     Route::post('/debtors/SMS/notify', [SMSController::class, 'notify_debitors'])->name('notify_debitors'); 
     Route::get('/debtors/view', [PaymentController::class, 'debtors_all'])->name('debitors.all'); 
+
+
+
+     /* Webhook (NO auth middleware) */
+    Route::get('/payment/webhook', [PaymentWebhookController::class, 'trackPendingPayments'])->name('check.payment.status');
+    // routes/api.php or web.php (with /ajax prefix)
+    Route::get('/recharge/status/json/{reference}', [PaymentWebhookController::class, 'SMSReachargestatus'])->name('recharge.status.json');
+    // routes/api.php or web.php (with /ajax prefix)
+    Route::get('/recharge/sender/status/json/{reference}', [PaymentWebhookController::class, 'SenderIDReachargestatus'])->name('rechargeSender.status');
 
 
 

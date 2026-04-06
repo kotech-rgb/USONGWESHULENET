@@ -47,6 +47,8 @@
                    <form method="GET" action="{{ route('result_index') }}" onsubmit="return confirm('Are you sure you want to Approve results for selected class')">
 				   <input type="hidden" name="approve" value="yes">
 				   <input type="" value="{{ $row }}" name="class_name">
+                   <input type="hidden" value="{{ $termName }}" name="term">
+                   <input type="hidden" value="{{ $yearName }}" name="year">
 				   <button type="submit" class="btn btn-sm btn-outline-info"><i class="fa fa-check-circle"></i> Click to approve</button>  
 					</form>
                     @endif

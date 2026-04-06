@@ -61,21 +61,30 @@
   <div class="col-12">
     <div class="shadow-sm rounded p-3 bg-white border">
 
-        <div class="row mb-3">
-            <div class="col-md-3">
-                <form method="GET" action="{{ route('student_subject_index') }}">
-                    <div class="input-group">
-                        <select class="form-select form-select-sm select2" name="class_name">
-                            <option value="">[ ]</option>
-                            @foreach($C as $row)
-                                <option value="{{ $row->name }}" {{ request('class_name') == $row->name ? 'selected' : '' }}>{{ $row->name }}</option>
-                            @endforeach
-                        </select>
-                        <button type="submit" class="btn btn-dark btn-sm px-3">Search</button>
-                    </div>
-                </form>
-            </div>
+        <div class="col-md-5 mb-3"> {{-- Increased column width slightly to fit both buttons --}}
+    <form method="GET" action="{{ route('student_subject_index') }}">
+        <div class="input-group">
+            <select class="form-select form-select-sm select2" name="class_name">
+                <option value="">[ Select Class ]</option>
+                @foreach($C as $row)
+                    <option value="{{ $row->name }}" {{ request('class_name') == $row->name ? 'selected' : '' }}>
+                        {{ $row->name }}
+                    </option>
+                @endforeach
+            </select>
+            
+            <button type="submit" class="btn btn-dark btn-sm px-3">
+                <i class="fa fa-search"></i> Search
+            </button>
+
+            @if(request()->filled('class_name'))
+                <a href="{{ route('student_subject_index') }}" class="btn btn-outline-danger btn-sm px-3">
+                    <i class="fa fa-refresh"></i> Go Back
+                </a>
+            @endif
         </div>
+    </form>
+</div>
         
         @if(count($C) > 0 && count($S) > 0)
         <div class="table-responsive">

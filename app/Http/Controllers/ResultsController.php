@@ -21,7 +21,7 @@ class ResultsController extends Controller
 public function result_index(Request $request)
 {
     $termName = $request->term;
-    $yearName = $request->academic_year;
+    $yearName = $request->year;
     $user     = Auth::user();
 
     // Teacher's & all classes

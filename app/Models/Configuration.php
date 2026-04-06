@@ -15,6 +15,7 @@ class Configuration extends Model
         'close_school',
         'headmaster_name',
         'sms_temp',
+        'sms_balance',
         'report_head'
      ];
 }

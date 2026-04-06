@@ -40,7 +40,7 @@
                     <div class="col-md-3">
                     <label>Academic Year</label>
                         <div class="form-floating">
-                            <select class="form-select select2" name="academic_year" required>
+                            <select class="form-select select2" name="year" required>
                                 @foreach($years as $year)
                                     <option value="{{ $year->year_name }}">
                                         {{ $year->year_name }}

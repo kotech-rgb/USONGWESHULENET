@@ -189,13 +189,13 @@ class SMSController extends Controller
             }
 
             // Time validation
-            $tz = 'Africa/Dar_es_Salaam';
-            $scheduledAt = Carbon::parse($request->send_date . ' ' . $request->send_time, $tz);
-            $minTime = Carbon::now($tz)->addMinutes(20);
+            // $tz = 'Africa/Dar_es_Salaam';
+            // $scheduledAt = Carbon::parse($request->send_date . ' ' . $request->send_time, $tz);
+            // $minTime = Carbon::now($tz)->addMinutes(20);
 
-            if ($scheduledAt->lt($minTime)) {
-                return back()->with('invalid', 'SMS must be at least 20 minutes from now.');
-            }
+            // if ($scheduledAt->lt($minTime)) {
+            //     return back()->with('invalid', 'SMS must be at least 20 minutes from now.');
+            // }
 
             // Fetch students with their results
             $students = DB::table('results')
@@ -241,13 +241,7 @@ class SMSController extends Controller
                 $length = strlen($encodedMessage);
                 $units = ($length <= 160) ? 1 : ceil($length / 153);
 
-                $result = $smsService->scheduleSMS(
-                    $student->phone,
-                    $encodedMessage,
-                    $scheduledAt->toDateString(),
-                    $scheduledAt->format('H:i')
-                );
-
+                $result = $smsService->sendSMS($student->phone,$encodedMessage,'RESULTS NOTIFICATION');
                 if ($result) {
                     $totalUnitsUsed += $units;
                     $successCount++;
@@ -285,12 +279,12 @@ public function sendBatch(Request $request, SmsService $smsService)
         }
 
         // Time validation
-        $tz = 'Africa/Dar_es_Salaam';
-        $scheduledAt = Carbon::parse($request->send_date . ' ' . $request->send_time, $tz);
-        $minTime = Carbon::now($tz)->addMinutes(20);
-        if ($scheduledAt->lt($minTime)) {
-            return response()->json(['success' => false, 'message' => 'SMS must be at least 20 minutes from now.'], 400);
-        }
+        // $tz = 'Africa/Dar_es_Salaam';
+        // $scheduledAt = Carbon::parse($request->send_date . ' ' . $request->send_time, $tz);
+        // $minTime = Carbon::now($tz)->addMinutes(20);
+        // if ($scheduledAt->lt($minTime)) {
+        //     return response()->json(['success' => false, 'message' => 'SMS must be at least 20 minutes from now.'], 400);
+        // }
 
         $school = DB::table('configurations')->first();
 
@@ -331,12 +325,7 @@ public function sendBatch(Request $request, SmsService $smsService)
             $length = strlen($encodedMessage);
             $units = ($length <= 160) ? 1 : ceil($length / 153);
 
-            $result = $smsService->scheduleSMS(
-                $student->phone,
-                $encodedMessage,
-                $scheduledAt->toDateString(),
-                $scheduledAt->format('H:i')
-            );
+            $result = $smsService->sendSMS($student->phone,$encodedMessage,'RESULTS NOTIFICATION SMS');
 
             if ($result) {
                 $totalUnitsUsed += $units;

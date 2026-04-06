@@ -15,8 +15,6 @@
 @section('title', 'SMS Portal')
 
 @section('content')
-<!-- Font Awesome (if not already in layout) -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
 <style>
     /* Minimal custom CSS – only for sticky sidebar */
@@ -149,7 +147,7 @@
         <div class="col-lg-4 sticky-sidebar">
             <div class="card bg-light text-dark">
                 <div class="card-body">
-                    <h5 class="card-title">SCHEDULE YOUR SMS</h5>
+                    <h5 class="card-title">SEND SMS</h5>
                     <hr>
                     <table class="table table-bordered table-sm text-dark">
                         <thead>
@@ -169,13 +167,7 @@
                             </tr>
                         </tbody>
                     </table>
-                    <span class="small text-muted">Tafadhali chagua muda wa kuanza kutuma SMS. Muda uwe angalau dakika 20 kuanzia sasa.</span>
-                    <input type="date" id="date" class="form-control form-control-sm mb-2" value="{{ date('Y-m-d') }}">
-                    <input type="time" id="time" class="form-control form-control-sm mb-2">
-                    
-                    {{-- Dynamic delivery message --}}
-                    <div id="deliveryMessage" class="alert alert-info small py-2 mt-1 mb-2" style="font-size:0.8rem;"></div>
-                    
+                    <div id="errorMessage" class="alert alert-warning small py-2 mt-2 d-none" style="font-size:0.8rem;"></div>
                     <button class="btn btn-primary w-100" id="sendBtn" disabled>
                         <span id="sendText">SEND</span>
                         <span id="sendSpinner" class="spinner-border spinner-border-sm d-none"></span>
@@ -193,7 +185,6 @@
         <div class="card-body text-center p-4">
             <i class="fas fa-sms fa-4x text-primary mb-3"></i>
             <h5 class="card-title">Sending SMS</h5>
-            <!-- Three-dot animation -->
             <div class="dot-floating my-3">
                 <span></span><span></span><span></span>
             </div>
@@ -230,12 +221,10 @@ document.addEventListener('DOMContentLoaded', function(){
     const checkboxes = document.querySelectorAll('.cb');
     const master = document.getElementById('masterSelect');
     let balance = parseInt(document.getElementById('balance')?.innerText || 0);
-    const dateInput = document.getElementById('date');
-    const timeInput = document.getElementById('time');
-    const deliveryDiv = document.getElementById('deliveryMessage');
     const sendBtn = document.getElementById('sendBtn');
     const sendText = document.getElementById('sendText');
     const sendSpinner = document.getElementById('sendSpinner');
+    const errorMsgDiv = document.getElementById('errorMessage');
     
     // Overlay elements
     const overlay = document.getElementById('sendingOverlay');
@@ -251,36 +240,6 @@ document.addEventListener('DOMContentLoaded', function(){
     let totalUnitsUsed = 0;
     let failedBatch = null;
     let isSending = false;
-    let date = '', time = '';
-
-    function formatTime(date) {
-        return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    }
-
-    function getDeliveryDescription(selectedDate, selectedTime) {
-        if (!selectedDate || !selectedTime) return 'Select date and time to see delivery info.';
-        const now = new Date();
-        const scheduled = new Date(selectedDate + 'T' + selectedTime);
-        const minTime = new Date(now.getTime() + 20 * 60000);
-        if (scheduled < minTime) return 'Scheduled time must be at least 20 minutes from now.';
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const scheduleDate = new Date(scheduled.getFullYear(), scheduled.getMonth(), scheduled.getDate());
-        const diffDays = Math.round((scheduleDate - today) / (1000 * 60 * 60 * 24));
-        const timeStr = formatTime(scheduled);
-        if (diffDays === 0) return `Your SMS will start delivery: <strong>Today at ${timeStr}</strong>`;
-        if (diffDays === 1) return `Your SMS will start delivery: <strong>Tomorrow at ${timeStr}</strong>`;
-        if (diffDays <= 7) return `Your SMS will start delivery: <strong>This week on ${scheduled.toLocaleDateString(undefined, {weekday:'long'})} at ${timeStr}</strong>`;
-        if (diffDays <= 30) return `Your SMS will start delivery: <strong>This month on ${scheduled.toLocaleDateString()} at ${timeStr}</strong>`;
-        return `Your SMS will start delivery: <strong>on ${scheduled.toLocaleDateString()} at ${timeStr}</strong>`;
-    }
-
-    function updateDeliveryMessage() {
-        if (dateInput.value && timeInput.value) {
-            deliveryDiv.innerHTML = getDeliveryDescription(dateInput.value, timeInput.value);
-        } else {
-            deliveryDiv.innerHTML = 'Select date and time to see delivery schedule.';
-        }
-    }
 
     function updateUI() {
         let count = 0, cost = 0;
@@ -292,19 +251,28 @@ document.addEventListener('DOMContentLoaded', function(){
         });
         document.getElementById('count').innerText = count;
         document.getElementById('cost').innerText = cost;
-        document.getElementById('remain').innerText = balance - cost;
+        const remaining = balance - cost;
+        document.getElementById('remain').innerText = remaining;
 
-        const dateVal = dateInput.value;
-        const timeVal = timeInput.value;
-        let valid = false;
-        if(dateVal && timeVal){
-            let d = new Date(dateVal + "T" + timeVal);
-            let now = new Date();
-            now.setMinutes(now.getMinutes() + 20);
-            valid = d >= now;
+        let errorMsg = '';
+        let disable = false;
+
+        if (count === 0) {
+            errorMsg = 'Please select at least one student.';
+            disable = true;
+        } else if (cost > balance) {
+            errorMsg = 'Insufficient SMS balance. Required units: ' + cost + ', Available: ' + balance;
+            disable = true;
         }
-        sendBtn.disabled = !(count > 0 && cost <= balance && valid) || isSending;
-        updateDeliveryMessage();
+
+        if (errorMsg) {
+            errorMsgDiv.innerText = errorMsg;
+            errorMsgDiv.classList.remove('d-none');
+        } else {
+            errorMsgDiv.classList.add('d-none');
+        }
+
+        sendBtn.disabled = disable || isSending;
     }
 
     function showOverlay(showRetry = false, errorMsg = '') {
@@ -318,14 +286,12 @@ document.addEventListener('DOMContentLoaded', function(){
         }
         overlayRetryBtn.classList.toggle('d-none', !showRetry);
         overlayCancelBtn.classList.toggle('d-none', !showRetry);
-        // Ensure animated stripes are visible
         overlayProgressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
     }
 
     function hideOverlay() {
         overlay.classList.add('d-none');
         overlay.classList.remove('d-flex');
-        // Remove animation classes when hidden
         overlayProgressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
     }
 
@@ -339,8 +305,6 @@ document.addEventListener('DOMContentLoaded', function(){
     async function sendBatch(batchIds) {
         const formData = new FormData();
         formData.append('_token', '{{ csrf_token() }}');
-        formData.append('send_date', date);
-        formData.append('send_time', time);
         formData.append('year', '{{ $yearName }}');
         formData.append('semester', '{{ $termName }}');
         batchIds.forEach(id => formData.append('selected_students[]', id));
@@ -362,17 +326,14 @@ document.addEventListener('DOMContentLoaded', function(){
             alert('Please select at least one student.');
             return;
         }
-        date = dateInput.value;
-        time = timeInput.value;
-        if (!date || !time) {
-            alert('Please select date and time.');
-            return;
-        }
-        let d = new Date(date + "T" + time);
-        let now = new Date();
-        now.setMinutes(now.getMinutes() + 20);
-        if (d < now) {
-            alert('Scheduled time must be at least 20 minutes from now.');
+
+        // Double-check balance before starting
+        let totalCost = 0;
+        selected.forEach(cb => {
+            totalCost += parseInt(cb.closest('.student-row').dataset.units);
+        });
+        if (totalCost > balance) {
+            alert(`Insufficient balance. Required: ${totalCost}, Available: ${balance}`);
             return;
         }
 
@@ -486,8 +447,6 @@ document.addEventListener('DOMContentLoaded', function(){
         });
         updateUI();
     });
-    dateInput?.addEventListener('change', updateUI);
-    timeInput?.addEventListener('change', updateUI);
     
     sendBtn?.addEventListener('click', (e) => {
         e.preventDefault();

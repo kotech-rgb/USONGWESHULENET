@@ -122,17 +122,23 @@
 
         <div class="col-lg-4">
             <div class="bg-white border rounded-4 p-4 shadow-sm h-100">
+                @php
+                use App\Models\Term;
+                use App\Models\Year;
 
+                $termName = Term::where('status', 'active')->value('term_name');
+                $yearName = Year::where('status', 'active')->value('year_name');
+                @endphp
                 <div class="fw-semibold mb-3">Academic Year</div>
 
                 <ul class="list-unstyled small mb-0">
                     <li class="d-flex justify-content-between py-2 border-bottom">
                         <span>Current Running</span>
-                        <span class="badge bg-success">2026</span>
+                        <span class="badge bg-success">{{$yearName}}</span>
                     </li>
                     <li class="d-flex justify-content-between py-2">
                         <span>Current Term</span>
-                        <span class="badge bg-dark">FIRST MID-TERM</span>
+                        <span class="badge bg-dark">{{$termName}}</span>
                     </li>
                 </ul>
 

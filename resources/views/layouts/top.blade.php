@@ -55,7 +55,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
+<!-- <script>
     document.addEventListener('DOMContentLoaded', function () {
         const Toast = Swal.mixin({
             toast: true,
@@ -135,4 +135,72 @@
             });
         }
     });
+</script> -->
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // Function to show SweetAlert modal
+    function showAlert(icon, title, text) {
+        Swal.fire({
+            icon: icon,
+            title: title,
+            text: text,
+            confirmButtonText: 'OK',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+        });
+    }
+
+    // Success message
+    @if(session('success'))
+        showAlert('success', 'Success', "{{ session('success') }}");
+    @endif
+
+    // Warning message
+    @if(session('warning'))
+        showAlert('warning', 'Warning', "{{ session('warning') }}");
+    @endif
+
+    // Info message
+    @if(session('info'))
+        showAlert('info', 'Info', "{{ session('info') }}");
+    @endif
+
+    // Error / invalid message
+    @if(session('invalid'))
+        showAlert('error', 'Failed', "{{ session('invalid') }}");
+    @endif
+
+    // Validation errors
+    @if($errors->any())
+        @foreach($errors->all() as $error)
+            showAlert('error', 'Error', "{{ $error }}");
+        @endforeach
+    @endif
+
+    // Confirmation dialog for forms
+    const form = document.getElementById('confirmDialog');
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You want to submit your request",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Yes',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    }
+
+});
 </script>

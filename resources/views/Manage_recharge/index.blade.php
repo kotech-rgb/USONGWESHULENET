@@ -44,7 +44,7 @@
                         <h6 class="fw-bold small"><i class="bi bi-credit-card-2-front-fill me-1"></i>How to Pay</h6>
                         <ol class="mb-0 ps-3">
                             <li>Enter the SMS amount you wish to recharge.</li>
-                            <li>Enter your mobile money number (M-Pesa, TigoPesa, AirtelMoney).</li>
+                            <li>Enter your mobile money number (HaloPesa, TigoPesa, AirtelMoney).</li>
                             <li>Click <strong>"Click to Pay"</strong> to receive the USSD prompt.</li>
                             <li>Confirm with your PIN on your phone.</li>
                         </ol>

@@ -1,255 +1,81 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\services\SmsService;
-use App\services\ClickPesaService;
+use App\Services\SmsService;
+use App\Services\ClickPesaService;
+use App\Models\{Year, SmsPackage, Recharge, Configuration};
 use Illuminate\Support\Str;
-use App\Models\Darasa; 
-use App\Models\Student;
-use App\Models\Result;
-use App\Models\Semester;
-use App\Models\Year;
-use App\Models\SmsPackage;
-use App\Models\Recharge;
-use App\Models\Configuration;
-use Auth;
 use DB;
-use Carbon\Carbon;
-
 
 class SMSController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
-    $darasa = $request->query('class_name');
-    $mhula = $request->query('semester');
-    $mwaka = $request->query('year');
-    // $classes = Darasa::all()->map(fn($item) => preg_replace('/\s+[A-Z]$/', '', $item->name))
-    //     ->unique()->values(); 
-    $classes=['FORM ONE','FORM TWO','FORM THREE','FORM FOUR','FORM FIVE','FORM SIX','FORM FOUR GRADUATE','FORM SIX GRADUATE'];    
-     $students = DB::table('results')
-    ->join('students', 'results.student_id', '=', 'students.id')
-    ->where('results.class', $darasa)
-    ->where('results.year', $mwaka)
-    ->where('results.term', $mhula)
-    ->get();
-    if ($students->isEmpty() && $request->filled('class_name') && $request->filled('semester') && $request->filled('year')) {
-        return back()->with('invalid', 'No results approved for the selected class in this term');
+        $darasa = $request->query('class_name');
+        $mhula = $request->query('semester');
+        $mwaka = $request->query('year');
+        $classes = ['FORM ONE', 'FORM TWO', 'FORM THREE', 'FORM FOUR', 'FORM FIVE', 'FORM SIX', 'FORM FOUR GRADUATE', 'FORM SIX GRADUATE'];
+        $students = DB::table('results')
+            ->join('students', 'results.student_id', '=', 'students.id')
+            ->where('results.class', $darasa)
+            ->where('results.year', $mwaka)
+            ->where('results.term', $mhula)
+            ->select('results.*', 'students.firstname', 'students.lastname', 'students.phone')
+            ->get();
+        if ($students->isEmpty() && $request->filled(['class_name', 'semester', 'year'])) {
+            return back()->with('invalid', 'No results approved for the selected class in this term');
+        }
+        return view('Manage_result.sms', compact('classes', 'students', 'darasa'));
     }
-    return view('Manage_result.sms', compact('classes', 'students', 'darasa'));
-   }
+
+    public function messaging(Request $request, SmsService $smsService)
+    {
+        return $this->processSmsSending($request, $smsService, false);
+    }
+
+    public function sendBatch(Request $request, SmsService $smsService)
+    {
+        return $this->processSmsSending($request, $smsService, true);
+    }
 
     /**
-     * Show the form for creating a new resource.
+     * Shared logic for sending Result SMS (Standard and Batch)
      */
+    private function processSmsSending(Request $request, SmsService $smsService, $isJson = false)
+    {
+        $selectedStudentIds = $request->input('selected_students', []);
+        if (empty($selectedStudentIds)) {
+            return $isJson 
+                ? response()->json(['success' => false, 'message' => 'No students selected.'], 400)
+                : back()->with('invalid', 'Please select at least one student.');
+        }
 
-    // public function messaging(Request $request, SmsService $smsService)
-    // {
-    //     $school = DB::table('configurations')->first();
-    //     $selectedStudentIds = $request->input('selected_students', []);
-    //     if (empty($selectedStudentIds)) {
-    //         return back()->with('invalid', 'Please select at least one student to send SMS');
-    //     }
-    //     if (count($selectedStudentIds) > 20) {
-    //         return back()->with('invalid', 'Only batch of 20 students at a time');
-    //     }
-    //         $totalStudents = DB::table('students')->where('class_name', 'LIKE', $request->class_name . '%')->count();
-    //         $students = DB::table('results')
-    //         ->join('students', 'results.student_id', '=', 'students.id')
-    //         ->whereIn('results.student_id', $selectedStudentIds)
-    //         ->select('students.firstname','students.middlename','students.lastname','students.phone', 'results.division','results.score_details','results.total_points')
-    //         ->get();
-    //          $allSent = $students->every(function ($student) use ($smsService, $totalStudents, $school) {
-    //         $formattedScores = str_replace(', ', "\n", $student->score_details);
-    //         $message .= "Ndugu mzazi wa: " . strtoupper("{$student->firstname}, {$student->middlename}, {$student->lastname}") . ", matokeo ya mwanao ni kama ifuatavyo,\n";
-    //         $message .= "\n{$formattedScores}";
-    //         $message .= "\nAmepata DIVISION-{$student->division} ya POINTS-{$student->total_points}\n";
-    //         $message .= $school->sms_temp;
-    //         // return $smsService->sendSMS($student->phone, $message, 'ResultNotification');
-    //         return $result = $smsService->scheduleSMS(
-    //             $student->phone, 
-    //             $message, 
-    //             $request->send_date, 
-    //             $request->send_time
-    //         );
-    //      });
-    //     if ($allSent) {
-    //         // 5. Deduct Balance
-    //         Configuration::where('comp_name', $kampuni)->decrement('sms_balance', $metrics['total_needed']);
-    //         Result::whereIn('student_id', $selectedStudentIds)
-    //             ->where('term', $request->semester)
-    //             ->where('year', $request->year)
-    //             ->update(['sms' => 1]);
-    //         return redirect()->back()->with('success', 'Message sent to all selected students');
-    //     }
-    //     return back()->with('invalid', 'Some error occurred during sending SMS');
-    // }
-
-
-        //    public function messaging(Request $request, SmsService $smsService)
-        // {
-        //     // 1. Fetch configuration and validate selection
-        //     $school = DB::table('configurations')->first();
-        //     $selectedStudentIds = $request->input('selected_students', []);
-
-        //     if (empty($selectedStudentIds)) {
-        //         return back()->with('invalid', 'Please select at least one student to send SMS');
-        //     }
-
-        //     // 2. Timezone-aware scheduling check (Tanzania Time)
-        //     $tz = 'Africa/Dar_es_Salaam';
-        //     $scheduledAt = Carbon::parse($request->send_date . ' ' . $request->send_time, $tz);
-        //     $minTime = Carbon::now($tz)->addMinutes(20);
-
-        //     if ($scheduledAt->isBefore($minTime)) {
-        //         return back()->with('invalid', 'Scheduling Error: SMS must be scheduled at least 20 minutes from now.');
-        //     }
-
-        //     // 3. Fetch results with student details
-        //     $students = DB::table('results')
-        //         ->join('students', 'results.student_id', '=', 'students.id')
-        //         ->whereIn('results.student_id', $selectedStudentIds)
-        //         ->select(
-        //             'students.firstname', 'students.middlename', 'students.lastname', 
-        //             'students.phone', 'results.division', 'results.score_details', 
-        //             'results.total_points', 'results.student_id'
-        //         )
-        //         ->get();
-
-        //     $totalUnitsUsed = 0;
-        //     $successCount = 0;
-
-        //     // 4. Loop through students and schedule
-        //     foreach ($students as $student) {
-        //         $formattedScores = trim(str_replace(', ', "\n", $student->score_details));
-                
-        //         // Build message - Using trim to remove accidental invisible spaces
-        //         $message = "Ndugu mzazi wa: " . strtoupper("{$student->firstname}, {$student->middlename}, {$student->lastname}") . ", matokeo ya mwanao ni kama ifuatavyo,\n";
-        //         $message .= "\n{$formattedScores}";
-        //         $message .= "\nAmepata DIVISION-{$student->division} ya POINTS-{$student->total_points}\n";
-        //         $message .= trim($school->sms_temp);
-
-        //         // Sanitize encoding to keep it GSM (160 char limit)
-        //         $message = iconv("UTF-8", "ISO-8859-1//TRANSLIT", $message);
-
-        //         // CORRECT Multi-part Unit Calculation
-        //         $charCount = strlen($message);
-        //         if ($charCount <= 160) {
-        //             $unitsForThisSms = 1;
-        //         } else {
-        //             // Multi-part SMS are billed per 153 characters
-        //             $unitsForThisSms = ceil($charCount / 153);
-        //         }
-
-        //         // Call the Service
-        //         $result = $smsService->scheduleSMS(
-        //             $student->phone, 
-        //             $message, 
-        //             $request->send_date, 
-        //             $request->send_time 
-        //         );
-
-        //         if ($result) {
-        //             $totalUnitsUsed += $unitsForThisSms;
-        //             $successCount++;
-                    
-        //             DB::table('results')
-        //                 ->where('student_id', $student->student_id)
-        //                 ->where('year', $request->year)
-        //                 ->where('term', $request->semester)
-        //                 ->update(['sms' => 1]);
-        //         }
-        //     }
-
-        //     // 5. Final Updates
-        //     if ($successCount > 0) {
-        //         DB::table('configurations')->decrement('sms_balance', $totalUnitsUsed);
-        //         return redirect()->back()->with('success', "Batch of {$successCount} SMS scheduled. {$totalUnitsUsed} units deducted.");
-        //     }
-
-        //     return back()->with('invalid', 'Some error occurred during sending SMS');
-        // }
-
-
-
-
-        public function messaging(Request $request, SmsService $smsService)
-        {
         DB::beginTransaction();
         try {
             $school = DB::table('configurations')->first();
-            $selectedStudentIds = $request->input('selected_students', []);
-
-            if (empty($selectedStudentIds)) {
-                return back()->with('invalid', 'Please select at least one student.');
-            }
-
-            // Time validation
-            // $tz = 'Africa/Dar_es_Salaam';
-            // $scheduledAt = Carbon::parse($request->send_date . ' ' . $request->send_time, $tz);
-            // $minTime = Carbon::now($tz)->addMinutes(20);
-
-            // if ($scheduledAt->lt($minTime)) {
-            //     return back()->with('invalid', 'SMS must be at least 20 minutes from now.');
-            // }
-
-            // Fetch students with their results
-            $students = DB::table('results')
-                ->join('students', 'results.student_id', '=', 'students.id')
-                ->whereIn('results.student_id', $selectedStudentIds)
-                ->where('results.year', $request->year)
-                ->where('results.term', $request->semester)
-                ->select(
-                    'results.student_id',
-                    'students.firstname',
-                    'students.lastname',
-                    'students.phone',
-                    'results.division',
-                    'results.score_details',
-                    'results.total_points'
-                )
-                ->get();
+            $students = $this->getStudentResults($selectedStudentIds, $request->year, $request->semester);
 
             $totalUnitsUsed = 0;
             $successCount = 0;
 
             foreach ($students as $student) {
-                if (empty($student->phone)) {
-                    continue;
-                }
+                if (empty($student->phone)) continue;
 
-                // Build message exactly as in Blade
-                $schoolName = $school->school_name ?? 'Shule';
-                $smsTemplate = trim($school->sms_temp ?? '');
-
-                // Replace comma+space with newline (no trim, matches Blade)
-                $formattedScores = str_replace(', ', "\n", $student->score_details);
-                $message = "MZAZI WA {$student->firstname} {$student->lastname},\n";
-                $message .= "MATOKEO YA MWANAO NI:\n";
-                $message .= "{$formattedScores}\n";
-                $message .= "Division: {$student->division}, Points: {$student->total_points}\n";
-                $message .= $smsTemplate;
-
-                // Convert encoding (same as controller originally, but now after building message)
+                $message = $this->buildResultMessage($student, $school);
                 $encodedMessage = iconv("UTF-8", "ISO-8859-1//TRANSLIT", $message);
-
-                // Calculate units based on actual encoded length (matches SMS gateway behaviour)
+                
+                // Calculate Units
                 $length = strlen($encodedMessage);
                 $units = ($length <= 160) ? 1 : ceil($length / 153);
 
-                $result = $smsService->sendSMS($student->phone,$encodedMessage,'RESULTS NOTIFICATION');
-                if ($result) {
+                if ($smsService->sendSMS($student->phone, $encodedMessage, 'RESULTS NOTIFICATION')) {
                     $totalUnitsUsed += $units;
                     $successCount++;
 
                     DB::table('results')
-                        ->where('student_id', $student->student_id)
-                        ->where('year', $request->year)
-                        ->where('term', $request->semester)
+                        ->where(['student_id' => $student->student_id, 'year' => $request->year, 'term' => $request->semester])
                         ->update(['sms' => 1]);
                 }
             }
@@ -258,256 +84,146 @@ class SMSController extends Controller
                 DB::table('configurations')->decrement('sms_balance', $totalUnitsUsed);
                 DB::commit();
 
-                return back()->with('success', "{$successCount} SMS scheduled. {$totalUnitsUsed} units deducted.");
+                $msg = "{$successCount} SMS sent. {$totalUnitsUsed} units deducted.";
+                return $isJson 
+                    ? response()->json(['success' => true, 'sent' => $successCount, 'units_used' => $totalUnitsUsed])
+                    : back()->with('success', $msg);
             }
+
             DB::rollBack();
-            return back()->with('invalid', 'No SMS sent (no valid phone numbers or sending failed).');
+            return $isJson 
+                ? response()->json(['success' => false, 'message' => 'Failed to send SMS.'], 500)
+                : back()->with('invalid', 'No SMS sent.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('invalid', 'Error: ' . $e->getMessage());
+            return $isJson 
+                ? response()->json(['success' => false, 'message' => $e->getMessage()], 500)
+                : back()->with('invalid', 'Error: ' . $e->getMessage());
         }
     }
 
-
-public function sendBatch(Request $request, SmsService $smsService)
-{
-    try {
-        $selectedStudentIds = $request->input('selected_students', []);
-        if (empty($selectedStudentIds)) {
-            return response()->json(['success' => false, 'message' => 'No students selected.'], 400);
-        }
-
-        // Time validation
-        // $tz = 'Africa/Dar_es_Salaam';
-        // $scheduledAt = Carbon::parse($request->send_date . ' ' . $request->send_time, $tz);
-        // $minTime = Carbon::now($tz)->addMinutes(20);
-        // if ($scheduledAt->lt($minTime)) {
-        //     return response()->json(['success' => false, 'message' => 'SMS must be at least 20 minutes from now.'], 400);
-        // }
-
-        $school = DB::table('configurations')->first();
-
-        // Fetch only the students in this batch
-        $students = DB::table('results')
+    private function getStudentResults($ids, $year, $term)
+    {
+        return DB::table('results')
             ->join('students', 'results.student_id', '=', 'students.id')
-            ->whereIn('results.student_id', $selectedStudentIds)
-            ->where('results.year', $request->year)
-            ->where('results.term', $request->semester)
+            ->whereIn('results.student_id', $ids)
+            ->where(['results.year' => $year, 'results.term' => $term])
+            ->select('results.*', 'students.firstname', 'students.lastname', 'students.phone')
+            ->get();
+    }
+
+    private function buildResultMessage($student, $school)
+    {
+        $scoreEntries = explode(', ', $student->score_details);
+        $formatted = array_map([$this, 'formatSubjectGrade'], $scoreEntries);
+        $scoresString = implode(',', $formatted);
+        $msg = "MATOKEO YA {$student->firstname} {$student->lastname},\n";
+        $msg .=$scoresString . "\n";
+        $msg .= "DIV:{$student->division} PTS:{$student->total_points}\n";
+        $msg .= trim($school->sms_temp ?? '');
+        return $msg;
+    }
+
+    private function formatSubjectGrade(string $entry): string
+    {
+        $parts = explode('-', $entry);
+        if (count($parts) < 2) return $entry;
+        $subject = trim($parts[0]);
+        $scoreGrade = $parts[1];
+        preg_match('/\((.*?)\)/', $scoreGrade, $matches);
+        $grade = $matches[0] ?? '';
+        // Remove N/A if it exists inside the grade
+        if ($grade === '(N/A)') {
+            $grade = '()';
+        }
+        $stopWords = ['YA', 'NA', 'WA', 'KWA', 'OF', 'AND', 'THE', 'IN', 'WITH'];
+        $words = explode(' ', $subject);
+        if (count($words) > 1) {
+            $abbr = '';
+            foreach ($words as $w) {
+                if (!in_array(strtoupper($w), $stopWords)) {
+                    $abbr .= substr($w, 0, 1);
+                }
+            }
+        } else {
+            $abbr = substr($subject, 0, 4);
+        }
+        return strtoupper($abbr ?: substr($subject, 0, 3)) . $grade;
+    }
+
+    public function notify_debitors(Request $request, SmsService $smsService)
+    {
+        $school = DB::table('configurations')->first();
+        $active_year = Year::where('status', 'active')->value('year_name');
+        $selectedStudentIds = $request->input('selected_students', []);
+
+        if (empty($selectedStudentIds)) return back()->with('invalid', 'Select students first.');
+
+        $students = DB::table('students')
+            ->join('student_payments as sp', 'students.id', '=', 'sp.student_id')
             ->select(
-                'results.student_id',
-                'students.firstname',
-                'students.lastname',
-                'students.phone',
-                'results.division',
-                'results.score_details',
-                'results.total_points'
+                'students.phone', 'students.firstname', 'students.lastname', 'sp.mhula',
+                DB::raw('(MAX(sp.required_amount) - SUM(sp.amount)) as balance')
             )
+            ->whereIn('students.id', $selectedStudentIds)
+            ->where(['sp.ac_year' => $active_year, 'sp.mhula' => $request->term])
+            ->groupBy('students.id', 'students.phone', 'students.firstname', 'students.lastname', 'sp.mhula')
+            ->havingRaw('SUM(sp.amount) < MAX(sp.required_amount)')
             ->get();
 
-        $totalUnitsUsed = 0;
-        $successCount = 0;
-
         foreach ($students as $student) {
-            if (empty($student->phone)) continue;
-
-            $schoolName = $school->school_name ?? 'Shule';
-            $smsTemplate = trim($school->sms_temp ?? '');
-            $formattedScores = str_replace(', ', "\n", $student->score_details);
-
-            $message = "MZAZI WA {$student->firstname} {$student->lastname},\n";
-            $message .= "MATOKEO YA MWANAO NI:\n";
-            $message .= "{$formattedScores}\n";
-            $message .= "Division: {$student->division}, Points: {$student->total_points}\n";
-            $message .= $smsTemplate;
-
-            $encodedMessage = iconv("UTF-8", "ISO-8859-1//TRANSLIT", $message);
-            $length = strlen($encodedMessage);
-            $units = ($length <= 160) ? 1 : ceil($length / 153);
-
-            $result = $smsService->sendSMS($student->phone,$encodedMessage,'RESULTS NOTIFICATION SMS');
-
-            if ($result) {
-                $totalUnitsUsed += $units;
-                $successCount++;
-                DB::table('results')
-                    ->where('student_id', $student->student_id)
-                    ->where('year', $request->year)
-                    ->where('term', $request->semester)
-                    ->update(['sms' => 1]);
-            }
+            $message = "Shule ya {$school->school_name}\n";
+            $message .= "Mzazi wa " . strtoupper("{$student->firstname} {$student->lastname}") . ", ";
+            $message .= "unadaiwa ada TZS: " . number_format($student->balance) . " awamu ya {$student->mhula}. Lipa mapema.";
+            
+            $smsService->sendSMS($student->phone, $message, 'DebtorsNotification');
         }
 
-        if ($successCount > 0) {
-            DB::table('configurations')->decrement('sms_balance', $totalUnitsUsed);
-            $newBalance = DB::table('configurations')->value('sms_balance');
-            return response()->json([
-                'success' => true,
-                'sent' => $successCount,
-                'units_used' => $totalUnitsUsed,
-                'new_balance' => $newBalance
-            ]);
-        }
-
-        return response()->json(['success' => false, 'message' => 'No SMS could be sent.'], 500);
-
-    } catch (\Exception $e) {
-        return response()->json(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
-    }
-}
-
-
-
-
-public function notify_debitors(Request $request, SmsService $smsService)
-{
-    $school = DB::table('configurations')->first();
-    $active_year=Year::where('status','active')->value('year_name');
-    $selectedStudentIds = $request->input('selected_students', []);
-
-    // Validation
-    if (empty($selectedStudentIds)) {
-        return back()->with('invalid', 'Please select at least one student to send SMS');
-    }
-    if (count($selectedStudentIds) > 20) {
-        return back()->with('invalid', 'Only batch of 20 students at a time');
-    }
-
-    // Fetch students with their balances
-    $students = DB::table('students')
-        ->join('student_payments as sp', 'students.id', '=', 'sp.student_id')
-        ->select(
-            'students.id',
-            'students.firstname',
-            'students.middlename',
-            'students.lastname',
-            'students.phone',
-            'sp.mhula',
-            DB::raw('MAX(sp.required_amount) as required_amount'),
-            DB::raw('COALESCE(SUM(sp.amount),0) as total_paid'),
-            DB::raw('(MAX(sp.required_amount) - COALESCE(SUM(sp.amount),0)) as balance')
-        )
-        ->whereIn('students.id', $selectedStudentIds)
-        ->where('sp.ac_year', $active_year)
-        ->where('sp.mhula', $request->term)
-        // ->where('students.class_name', $request->class_name)
-        ->groupBy(
-            'students.id', 
-            'students.firstname', 
-            'students.middlename', 
-            'students.lastname',
-            'students.phone',
-            'sp.mhula'
-        )
-        ->havingRaw('COALESCE(SUM(sp.amount),0) < MAX(sp.required_amount)')
-        ->get();
-
-    // Send SMS to each student’s parent
-    $allSent = $students->every(function ($student) use ($smsService, $school) {
-        $message = "Taarifa kutoka shule ya {$school->school_name}\n";
-        $message .= "Ndugu mzazi wa " . strtoupper("{$student->firstname} {$student->middlename} {$student->lastname}") . " ";
-        $message.="tunakukumbusha kuwa bado unadaiwa ada kiasi cha TZS:". number_format($student->balance). " katika awamu hii ya ({$student->mhula})";
-        // $message .= "Kiasi unachotakiwa kulipa term ya {$student->mhula} ni:" . number_format($student->required_amount) ."\n";
-        // $message .= "Kiasi kilicholipwa hadi sasa: " . number_format($student->total_paid) . " TZS\n";
-        // $message .= "Hivyo unakumbushwa kumaliza kulipia ada iliyobaki: " . number_format($student->balance) . " TZS term ya {$student->mhula}\n";
-        $message .= "\nLipa mapema kuepusha usumbufu kwa mwanao";
-        return $smsService->sendSMS($student->phone, $message, 'DebtorsNotification');
-    });
-
-    if ($allSent) {
         DB::table('student_payments')
             ->whereIn('student_id', $selectedStudentIds)
-            ->where('mhula',$request->term)
+            ->where('mhula', $request->term)
             ->update(['last_notified' => now()->format('F j, Y')]);
-        return redirect()->back()->with('success', 'Message sent to all selected students\' parents');
+
+        return back()->with('success', 'Notifications sent.');
     }
 
-    return back()->with('invalid', 'Some error occurred during sending SMS');
-}
-
-
-
-
-
-
-
-    /** Recharge home */
-     public function recharge_home()
-        {
-            $packages = SmsPackage::orderBy('min_limit', 'asc')->get();
-            return view('Manage_recharge.index', compact('packages'));
-        }
-
-
-    /** Store recharge */
     public function store_recharge(Request $request, ClickPesaService $clickPesaService)
     {
-        $smsService = new SmsService();
-        $smsBalanceResult = $smsService->getSmsBalance();
-        $smsBalance = $smsBalanceResult['success']
-            ? $smsBalanceResult['balance']['sms_balance'] ?? 0
-            : 0;
         $request->validate([
-            'SMS_amount'   => 'required|integer|min:1',
+            'SMS_amount' => 'required|integer|min:1',
             'phone_number' => 'required|string|max:20',
         ]);
+
+        $smsService = new SmsService();
+        $smsBalance = $smsService->getSmsBalance()['balance']['sms_balance'] ?? 0;
+
         if ($request->SMS_amount > $smsBalance) {
-            return redirect()->back()->with('invalid', 'Insufficient SMS balance from Provider');
+            return back()->with('invalid', 'Insufficient balance at provider.');
         }
+
         $package = SmsPackage::where('min_limit', '<=', $request->SMS_amount)
                     ->where('max_limit', '>=', $request->SMS_amount)
                     ->first();
-        $price_per_unit = $package ? $package->price_per_unit : 25;
-        $pay_amount = $request->SMS_amount * $price_per_unit;
-        $company    = auth()->user()->company_from;
-        $reference  = 'REF' . strtoupper(Str::random(10));
+
+        $price = $package ? $package->price_per_unit : 25;
+        $payAmount = $request->SMS_amount * $price;
+        $reference = 'REF' . strtoupper(Str::random(10));
 
         try {
-            $clickPesaService->initiateUssdPush($pay_amount, $request->phone_number, $reference);
+            $clickPesaService->initiateUssdPush($payAmount, $request->phone_number, $reference);
             Recharge::create([
-                'invoice'      => 'INV' . strtoupper(Str::random(10)),
-                'reference'    => $reference,
-                'status'       => 'pending',
-                'SMS_amount'   => $request->SMS_amount,
-                'pay_amount'   => $pay_amount,
+                'invoice' => 'INV' . strtoupper(Str::random(10)),
+                'reference' => $reference,
+                'status' => 'pending',
+                'SMS_amount' => $request->SMS_amount,
+                'pay_amount' => $payAmount,
                 'phone_number' => $request->phone_number,
-                'company_info' => $company,
+                'company_info' => auth()->user()->company_from,
             ]);
             return redirect()->route('recharge.status', $reference);
-
         } catch (\Exception $e) {
-            $message = $e->getMessage();
-            $decoded = json_decode($message, true);
-            if (json_last_error() === JSON_ERROR_NONE && isset($decoded['message'])) {
-                $message = $decoded['message'];
-            }
-            return redirect()->back()->with('invalid', $message)->withInput();
+            return back()->with('invalid', 'Payment failed: ' . $e->getMessage());
         }
     }
-
-    /** Recharge status */
-    public function recharge_status($ref)
-    {
-        $recharge = Recharge::where('reference', $ref)->firstOrFail();
-        return view('Manage_recharge.payment_status', compact('recharge'));
-    }
-
-    /** Recharge history */
-    public function recharge_history()
-    {
-        $user = auth()->user();
-        $recharge = $user->role === 'admin'
-            ? Recharge::orderBy('created_at', 'desc')->get()
-            : Recharge::where('company_info', $user->company_from)->orderBy('created_at', 'desc')->get();
-
-        return view('Manage_recharge.payment_history', compact('recharge'));
-    }
-
-
-
-
-
-
-
-
 }

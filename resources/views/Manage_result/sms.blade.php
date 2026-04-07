@@ -93,21 +93,44 @@
                         <div class="vstack gap-2">
                             @foreach($students as $row)
                             @php
-                                $schoolName = $schoolDetails->school_name ?? 'Shule';
-                                $smsTemplate = trim($schoolDetails->sms_temp ?? '');
-                                $formattedScores = str_replace(', ', "\n", $row->score_details);
+                            $schoolName = $schoolDetails->school_name ?? 'Shule';
+                            $smsTemplate = trim($schoolDetails->sms_temp ?? '');
+                            
+                            $scoreEntries = explode(', ', $row->score_details);
+                            $shortenedList = [];
+                            $stopWords = ['YA', 'NA', 'WA', 'KWA', 'OF', 'AND', 'THE', 'IN', 'WITH'];
 
-                                $msg = "MZAZI WA {$row->firstname} {$row->lastname},\n";
-                                $msg .= "MATOKEO YA MWANAO NI:\n";
-                                $msg .= "{$formattedScores}\n";
-                                $msg .= "Division: {$row->division}, Points: {$row->total_points}\n";
-                                $msg .= $smsTemplate;
+                            foreach ($scoreEntries as $entry) {
+                                $parts = explode('-', $entry);
+                                if (count($parts) >= 2) {
+                                    $subject = trim($parts[0]);
+                                    preg_match('/\((.*?)\)/', $parts[1], $matches);
+                                    $grade = $matches[0] ?? '';
 
-                                $length = strlen($msg);
-                                $units = ($length <= 160) ? 1 : ceil($length / 153);
+                                    // Transformation: Change (N/A) to ()
+                                    if ($grade === '(N/A)') { $grade = '()'; }
+
+                                    $words = explode(' ', $subject);
+                                    if (count($words) > 1) {
+                                        $abbr = '';
+                                        foreach ($words as $w) {
+                                            if (!in_array(strtoupper($w), $stopWords)) $abbr .= substr($w, 0, 1);
+                                        }
+                                    } else {
+                                        $abbr = substr($subject, 0, 4);
+                                    }
+                                    $shortenedList[] = strtoupper($abbr ?: substr($subject, 0, 3)) . $grade;
+                                }
+                            }
+                            $formattedScores = implode(',', $shortenedList);
+                            $msg = "MATOKEO YA {$row->firstname} {$row->lastname},\n";
+                            $msg .= "{$formattedScores}\n";
+                            $msg .= "DIV:{$row->division} PTS:{$row->total_points}\n";
+                            $msg .= $smsTemplate;
+                            $length = strlen($msg);
+                            $units = ($length <= 160) ? 1 : ceil($length / 153);
                                 $search = strtolower($row->firstname.' '.$row->lastname);
                             @endphp
-
                             <div class="border rounded p-2 student-row"
                                  data-search="{{ $search }}"
                                  data-units="{{ $units }}"

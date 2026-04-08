@@ -189,6 +189,12 @@ class SMSController extends Controller
     }
 
     /** Recharge home */
+    public function recharge_home()
+        {
+            $packages = SmsPackage::orderBy('min_limit', 'asc')->get();
+            return view('Manage_recharge.index', compact('packages'));
+        }
+
     /** Store recharge */
     public function store_recharge(Request $request, ClickPesaService $clickPesaService)
     {
@@ -253,5 +259,5 @@ class SMSController extends Controller
         return view('Manage_recharge.payment_history', compact('recharge'));
     }
 
-    
+
 }

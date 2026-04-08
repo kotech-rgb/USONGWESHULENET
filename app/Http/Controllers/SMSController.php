@@ -188,6 +188,13 @@ class SMSController extends Controller
         return back()->with('success', 'Notifications sent.');
     }
 
+    /** Recharge home */
+     public function recharge_home()
+        {
+            $packages = SmsPackage::orderBy('min_limit', 'asc')->get();
+            return view('Manage_recharge.index', compact('packages'));
+        }
+
     public function store_recharge(Request $request, ClickPesaService $clickPesaService)
     {
         $request->validate([

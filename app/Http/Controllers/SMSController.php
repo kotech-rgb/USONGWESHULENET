@@ -189,48 +189,69 @@ class SMSController extends Controller
     }
 
     /** Recharge home */
-     public function recharge_home()
-        {
-            $packages = SmsPackage::orderBy('min_limit', 'asc')->get();
-            return view('Manage_recharge.index', compact('packages'));
-        }
-
+    /** Store recharge */
     public function store_recharge(Request $request, ClickPesaService $clickPesaService)
     {
+        $smsService = new SmsService();
+        $smsBalanceResult = $smsService->getSmsBalance();
+        $smsBalance = $smsBalanceResult['success']
+            ? $smsBalanceResult['balance']['sms_balance'] ?? 0
+            : 0;
         $request->validate([
-            'SMS_amount' => 'required|integer|min:1',
+            'SMS_amount'   => 'required|integer|min:1',
             'phone_number' => 'required|string|max:20',
         ]);
-
-        $smsService = new SmsService();
-        $smsBalance = $smsService->getSmsBalance()['balance']['sms_balance'] ?? 0;
-
         if ($request->SMS_amount > $smsBalance) {
-            return back()->with('invalid', 'Insufficient balance at provider.');
+            return redirect()->back()->with('invalid', 'Insufficient SMS balance from Provider');
         }
-
         $package = SmsPackage::where('min_limit', '<=', $request->SMS_amount)
                     ->where('max_limit', '>=', $request->SMS_amount)
                     ->first();
-
-        $price = $package ? $package->price_per_unit : 25;
-        $payAmount = $request->SMS_amount * $price;
-        $reference = 'REF' . strtoupper(Str::random(10));
+        $price_per_unit = $package ? $package->price_per_unit : 25;
+        $pay_amount = $request->SMS_amount * $price_per_unit;
+        $company    = auth()->user()->company_from;
+        $reference  = 'REF' . strtoupper(Str::random(10));
 
         try {
-            $clickPesaService->initiateUssdPush($payAmount, $request->phone_number, $reference);
+            $clickPesaService->initiateUssdPush($pay_amount, $request->phone_number, $reference);
             Recharge::create([
-                'invoice' => 'INV' . strtoupper(Str::random(10)),
-                'reference' => $reference,
-                'status' => 'pending',
-                'SMS_amount' => $request->SMS_amount,
-                'pay_amount' => $payAmount,
+                'invoice'      => 'INV' . strtoupper(Str::random(10)),
+                'reference'    => $reference,
+                'status'       => 'pending',
+                'SMS_amount'   => $request->SMS_amount,
+                'pay_amount'   => $pay_amount,
                 'phone_number' => $request->phone_number,
-                'company_info' => auth()->user()->company_from,
+                'company_info' => $company,
             ]);
             return redirect()->route('recharge.status', $reference);
+
         } catch (\Exception $e) {
-            return back()->with('invalid', 'Payment failed: ' . $e->getMessage());
+            $message = $e->getMessage();
+            $decoded = json_decode($message, true);
+            if (json_last_error() === JSON_ERROR_NONE && isset($decoded['message'])) {
+                $message = $decoded['message'];
+            }
+            return redirect()->back()->with('invalid', $message)->withInput();
         }
     }
+
+    /** Recharge status */
+    public function recharge_status($ref)
+    {
+        $recharge = Recharge::where('reference', $ref)->firstOrFail();
+        return view('Manage_recharge.payment_status', compact('recharge'));
+    }
+
+    /** Recharge history */
+    public function recharge_history()
+    {
+        $user = auth()->user();
+        $recharge = $user->role === 'admin'
+            ? Recharge::orderBy('created_at', 'desc')->get()
+            : Recharge::where('company_info', $user->company_from)->orderBy('created_at', 'desc')->get();
+
+        return view('Manage_recharge.payment_history', compact('recharge'));
+    }
+
+    
 }

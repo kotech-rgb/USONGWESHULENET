@@ -19,7 +19,7 @@ class EnrollmentController extends Controller
             if ($request->filled('class_name')) {
                 $C = Darasa::where('name', $request->class_name)->get();
             } else {
-                $C = Darasa::all();
+                $C = Darasa::orderBy('form_level')->get();
             }
             
             $S = Subject::all();
@@ -69,7 +69,7 @@ class EnrollmentController extends Controller
     public function teacher_subject_index()
     {
       $S = Subject::all();
-      $C = Darasa::all();
+      $C = Darasa::orderBy('form_level')->get();
       $U=User::where('role','Teacher')->get();
       $TS=DB::table('users')
       ->join('teacher_subjects','users.id','=','teacher_subjects.teacher')
@@ -107,7 +107,7 @@ class EnrollmentController extends Controller
     public function class_teachers()
     {
      $S = Subject::all();
-      $C = Darasa::all();
+      $C = Darasa::orderBy('form_level')->get();
       $U=User::where('role','Teacher')->get();
       $TS=DB::table('users')
       ->join('teacher_classes','users.id','=','teacher_classes.teacher_id')

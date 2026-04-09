@@ -7,6 +7,10 @@
     $now = \Carbon\Carbon::now('Africa/Dar_es_Salaam');
     $hour = $now->hour;
     $greeting = ($hour < 12) ? 'Good Morning' : (($hour < 17) ? 'Good Afternoon' : 'Good Evening');
+
+    use App\Models\MarksReversal;
+    $reversals = MarksReversal::where('user_id', auth()->id())->get();
+
 @endphp
 
 <div class="container-fluid py-3">
@@ -18,6 +22,18 @@
             <strong>{{ $greeting }}, {{ auth()->user()->fname }}</strong>
         </div>
     </div>
+    
+   @if($reversals->isNotEmpty())
+    @foreach($reversals as $reversal)
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fa fa-undo me-2"></i>
+        {{ $reversal->reason ?? 'No reason provided' }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    @endforeach
+    @endif
+
+
 
     <!-- STATS -->
     @if(Auth::user()->role == "Academic" || Auth::user()->role == "Headmaster")

@@ -16,7 +16,7 @@ $teacherClasses = DB::table('teacher_subjects')
     @foreach($classSubjects as $class => $subjects)
         @php $classNormalized = trim(strtoupper($class)); @endphp
 
-        {{-- Teacher sees only their assigned classes --}}
+        {{-- Teacher sees only their classes --}}
         @if($teacher->role == "Teacher" && !in_array($classNormalized, $teacherClasses))
             @continue
         @endif
@@ -34,7 +34,6 @@ $teacherClasses = DB::table('teacher_subjects')
                         </tr>
                     </thead>
                     <tbody>
-                        {{-- Test Row --}}
                         <tr>
                             <td class="fw-bold" style="padding:0.2rem;">Test</td>
                             @foreach($subjects->unique() as $subject)
@@ -48,45 +47,27 @@ $teacherClasses = DB::table('teacher_subjects')
                                 </td>
                             @endforeach
                         </tr>
-
-                        {{-- Exam Row --}}
                         <tr>
                             <td class="fw-bold" style="padding:0.2rem;">Exam</td>
                             @foreach($subjects->unique() as $subject)
-                                @php
-                                    $key = $class.'|'.$subject;
-                                    $isReversed = isset($reversals[$key]);
-                                @endphp
+                                @php $key = $class.'|'.$subject; @endphp
                                 <td style="padding:0.2rem;">
                                     @if(in_array($key, $examsUploaded))
-                                        {{-- Green checkmark --}}
                                         <i class="fa fa-check text-white" style="font-size:0.65rem; background-color:#28a745; padding:2px 6px; border-radius:50px;"></i>
-
-                                        @if($teacher->role == "Academic")
-                                            @if($isReversed)
-                                                {{-- Already reversed – show reason badge with tooltip --}}
-                                                <span class="badge bg-warning text-dark ms-1" style="font-size:0.6rem; cursor:help;"
-                                                      title="Reversed: {{ $reversals[$key]->reason }}&#10;Date: {{ \Carbon\Carbon::parse($reversals[$key]->created_at)->format('d M Y H:i') }}">
-                                                    <i class="fa fa-undo"></i> Reversed
-                                                </span>
-                                            @else
-                                                {{-- Not reversed – show reverse button --}}
-                                                <form class="reverseForm" action="{{ route('marks.reverse') }}" method="POST" style="display:inline-block;">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <input type="hidden" name="class" value="{{ $class }}">
-                                                    <input type="hidden" name="subject" value="{{ $subject }}">
-                                                    <input type="hidden" name="term" value="{{ $currentTerm }}">
-                                                    <input type="hidden" name="year" value="{{ $currentYear }}">
-                                                    {{-- Reason will be added by JavaScript --}}
-                                                    <button type="submit" class="btn btn-link btn-sm p-0 m-0 align-baseline" style="font-size:0.65rem;">
-                                                        Reverse <i class="fa fa-undo"></i>
-                                                    </button>
-                                                </form>
-                                            @endif
+                                        @if($teacher->role=="Academic")
+                                            <form class="reverseForm" action="{{ route('marks.reverse') }}" method="POST" style="display:inline-block;">
+                                                @csrf
+                                                @method('DELETE')
+                                                <input type="hidden" name="class" value="{{ $class }}">
+                                                <input type="hidden" name="subject" value="{{ $subject }}">
+                                                <input type="hidden" name="term" value="{{ $currentTerm }}">
+                                                <input type="hidden" name="year" value="{{ $currentYear }}">
+                                                <button class="btn btn-link btn-sm p-0 m-0 align-baseline" style="font-size:0.65rem;">
+                                                    Reverse <i class="fa fa-undo"></i>
+                                                </button>
+                                            </form>
                                         @endif
                                     @else
-                                        {{-- Exam not uploaded – red cross --}}
                                         <i class="fa fa-times text-white" style="font-size:0.65rem; background-color:#dc3545; padding:2px 6px; border-radius:50px;"></i>
                                     @endif
                                 </td>
@@ -109,50 +90,24 @@ $teacherClasses = DB::table('teacher_subjects')
 }
 .table-responsive { overflow-x: auto; }
 h6.fw-bold { margin-bottom: 0.15rem; }
-.badge {
-    vertical-align: middle;
-    line-height: 1.2;
-}
 </style>
 
-{{-- SweetAlert2 --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.querySelectorAll(".reverseForm").forEach(form => {
     form.addEventListener("submit", function(e) {
         e.preventDefault();
-
         Swal.fire({
             title: "Confirm Reversal",
             text: "Are you sure you want to reverse this exam upload? This action cannot be undone.",
             icon: "warning",
-            input: "textarea",
-            inputLabel: "Reason for reversal",
-            inputPlaceholder: "e.g., Wrong marks uploaded, duplicate entry...",
-            inputAttributes: {
-                maxlength: "500"
-            },
             showCancelButton: true,
             confirmButtonColor: "#3085d6",
             cancelButtonColor: "#d33",
-            confirmButtonText: "Yes, Reverse",
-            preConfirm: (reason) => {
-                if (!reason || reason.trim() === "") {
-                    Swal.showValidationMessage("Please provide a reason");
-                    return false;
-                }
-                return reason.trim();
-            }
+            confirmButtonText: "Yes, Reverse"
         }).then((result) => {
             if (result.isConfirmed) {
-                // Append reason as hidden input
-                const reasonInput = document.createElement("input");
-                reasonInput.type = "hidden";
-                reasonInput.name = "reason";
-                reasonInput.value = result.value;
-
-                form.appendChild(reasonInput);
-                form.submit();
+                this.submit();
             }
         });
     });

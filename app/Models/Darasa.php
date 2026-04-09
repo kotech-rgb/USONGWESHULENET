@@ -8,5 +8,6 @@ class Darasa extends Model
 {
     protected $fillable=[
         'name',
+        'form_level'
     ];
 }

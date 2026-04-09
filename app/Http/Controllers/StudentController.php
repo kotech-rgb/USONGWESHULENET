@@ -33,7 +33,7 @@ public function student_index(Request $request)
         });
     }
     $Array = $query->paginate(50)->appends($request->all());
-    $classes = Darasa::all();
+    $classes = Darasa::orderBy('form_level')->get();
     $drs = ['FORM ONE','FORM TWO','FORM THREE', 'FORM FOUR','FORM FIVE','FORM SIX'];
     return view('Manage_student.index', compact('Array','classes','configs','maombisData','drs'));
 }

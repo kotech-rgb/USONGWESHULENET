@@ -95,31 +95,52 @@
                             @php
                             $schoolName = $schoolDetails->school_name ?? 'Shule';
                             $smsTemplate = trim($schoolDetails->sms_temp ?? '');
-                            
+
+                            // --- Subject Mapping Table (Replaces abbreviation logic) ---
+                            $subjectMap = [
+                                'ACADEMIC COMMUNICATION SKILLS'    => 'ACCO',
+                                'ADVANCE MATHEMATICS'              => 'ADV MATH',
+                                'BASIC APPLIED MATHEMATICS'        => 'BAM',
+                                'BASIC MATHEMATICS'                => 'BM',
+                                'BIOLOGY'                          => 'BIO',
+                                'BOOK KEEPING'                     => 'B/KEEPING',
+                                'BUSSINESS  STUDIES'               => 'BSS', 
+                                'BUSINESS STUDIES'                 => 'BSS', 
+                                'CHEMISTRY'                        => 'CHEM',
+                                'CIVICS'                           => 'CIV',
+                                'COMMERCE'                         => 'COMM',
+                                'ECONOMICS'                        => 'ECON',
+                                'ENGLISH LANGUAGE'                 => 'ENG',
+                                'FASIHI YA KISWAHILI'              => 'FAKISW',
+                                'GENERAL STUDIES'                  => 'GS',
+                                'GEOGRAPHY'                        => 'GEOG',
+                                'HISTORIA YA TANZANIA NA MAADILI'  => 'HTM',
+                                'HISTORY'                          => 'HIST',
+                                'KISWAHILI'                        => 'KISW',
+                                'LITERATURE IN ENGLISH'            => 'LIT ENG',
+                                'MATHEMATICS'                      => 'MATH',
+                                'PHYSICS'                          => 'PHY',
+                            ];
                             $scoreEntries = explode(', ', $row->score_details);
                             $shortenedList = [];
-                            $stopWords = ['YA', 'NA', 'WA', 'KWA', 'OF', 'AND', 'THE', 'IN', 'WITH'];
-
                             foreach ($scoreEntries as $entry) {
                                 $parts = explode('-', $entry);
                                 if (count($parts) >= 2) {
                                     $subject = trim($parts[0]);
+                                    
+                                    // Extract grade from parentheses e.g., (A), (B), (N/A)
                                     preg_match('/\((.*?)\)/', $parts[1], $matches);
                                     $grade = $matches[0] ?? '';
 
-                                    // Transformation: Change (N/A) to ()
-                                    if ($grade === '(N/A)') { $grade = '()'; }
-
-                                    $words = explode(' ', $subject);
-                                    if (count($words) > 1) {
-                                        $abbr = '';
-                                        foreach ($words as $w) {
-                                            if (!in_array(strtoupper($w), $stopWords)) $abbr .= substr($w, 0, 1);
-                                        }
-                                    } else {
-                                        $abbr = substr($subject, 0, 4);
+                                    // Transform (N/A) to ()
+                                    if ($grade === '(N/A)') {
+                                        $grade = '()';
                                     }
-                                    $shortenedList[] = strtoupper($abbr ?: substr($subject, 0, 3)) . $grade;
+
+                                    // Look up the subject code from the map; fallback to first 4 letters if missing
+                                    $code = $subjectMap[$subject] ?? strtoupper(substr($subject, 0, 4));
+                                    
+                                    $shortenedList[] = $code . $grade;
                                 }
                             }
                             $formattedScores = implode(',', $shortenedList);
@@ -129,9 +150,10 @@
                             $msg .= $smsTemplate;
                             $length = strlen($msg);
                             $units = ($length <= 160) ? 1 : ceil($length / 153);
-                                $search = strtolower($row->firstname.' '.$row->lastname);
+                            $search = strtolower($row->firstname.' '.$row->lastname);
                             @endphp
-                            <div class="border rounded p-2 student-row"
+   
+               <div class="border rounded p-2 student-row"
                                  data-search="{{ $search }}"
                                  data-units="{{ $units }}"
                                  data-msg="{{ $msg }}">

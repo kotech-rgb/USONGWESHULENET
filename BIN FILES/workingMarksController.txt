@@ -11,7 +11,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use DB;
 use Auth;
 use App\Models\TeacherSubject;
-use App\Models\MarksReversal;
+
 use App\Models\Darasa;
 use App\Models\Subject;
 use App\Models\StudentSubject;
@@ -103,7 +103,7 @@ public function tamplate_index(Request $request)
 
     // Load classes, subjects, teacher info for form display
     $user = Auth()->user();
-    $madarasa=Darasa::orderBy('form_level')->get();
+    $madarasa = Darasa::all();
     $classes = $madarasa->map(fn($item) => preg_replace('/\s+[A-Z]$/', '', $item->name))
         ->unique()->values();
 
@@ -112,6 +112,7 @@ public function tamplate_index(Request $request)
         ->unique()->values();
     $MySubjects = $teacherSubjects->pluck('subject')->unique()->values();
     $subjects = Subject::all();
+
     return view('Manage_marks.tamplate', compact('classes', 'subjects', 'Myclasses', 'MySubjects'));
 }
 
@@ -264,7 +265,7 @@ public function upload_save(Request $request)
     return preg_replace('/\s+[A-Z]$/', '', $item->class);
     })->unique()->values();
     $MySubjects = $teacherSubjects->pluck('subject')->unique()->values();
-    $madarasa = Darasa::orderBy('form_level')->get();
+    $madarasa = Darasa::all();
     $classes = $madarasa->map(function($item) {
     return preg_replace('/\s+[A-Z]$/', '', $item->name);
     })->unique()->values(); 
@@ -280,7 +281,7 @@ public function test_index(Request $request)
     $configs=Configuration::first();
     $termName = Term::where('status', 'active')->value('term_name');
     $yearName = Year::where('status', 'active')->value('year_name');
-    $madarasa = Darasa::orderBy('form_level')->get();
+    $madarasa = Darasa::all();
     $classes = $madarasa->map(function($item) {
     return preg_replace('/\s+[A-Z]$/', '', $item->name);
     })->unique()->values(); 
@@ -414,54 +415,25 @@ public function upload_tracking()
     ));
 }
 
-// public function reverse(Request $request)
-// {
-//     $request->validate([
-//         'class' => 'required',
-//         'subject' => 'required',
-//         'term' => 'required',
-//         'year' => 'required',
-//     ]);
-//     DB::table('exams')
-//         ->where('classE', $request->class)
-//         ->where('subjectE', $request->subject)
-//         ->where('termE', $request->term)
-//         ->where('yearE', $request->year)
-//         ->delete();
-//     return redirect()->back()->with('success', 'Marks successfully reversed.');
-// }
-
-
 public function reverse(Request $request)
 {
     $request->validate([
-        'class'   => 'required',
+        'class' => 'required',
         'subject' => 'required',
-        'term'    => 'required',
-        'year'    => 'required',
-        'reason'  => 'nullable|string|max:500',
+        'term' => 'required',
+        'year' => 'required',
     ]);
-    $mwalimu = TeacherSubject::where('class', $request->class)->where('subject', $request->subject)->first();
-
-    // 1. Perform the deletion
-    $deleted = DB::table('exams')
+    DB::table('exams')
         ->where('classE', $request->class)
         ->where('subjectE', $request->subject)
         ->where('termE', $request->term)
         ->where('yearE', $request->year)
         ->delete();
-
-    // 2. Log the reversal  
-    MarksReversal::create([
-        'user_id' => $mwalimu->teacher,
-        'class'   => $request->class,
-        'subject' => $request->subject,
-        'term'    => $request->term,
-        'year'    => $request->year,
-        'reason'  => $request->reason,
-    ]);
-    return redirect()->back()->with('success', 'Marks reversed and logged successfully.');
+    return redirect()->back()->with('success', 'Marks successfully reversed.');
 }
+
+
+
 
 
 }

@@ -125,31 +125,77 @@ class SMSController extends Controller
         return $msg;
     }
 
+    // private function formatSubjectGrade(string $entry): string
+    // {
+    //     $parts = explode('-', $entry);
+    //     if (count($parts) < 2) return $entry;
+    //     $subject = trim($parts[0]);
+    //     $scoreGrade = $parts[1];
+    //     preg_match('/\((.*?)\)/', $scoreGrade, $matches);
+    //     $grade = $matches[0] ?? '';
+    //     // Remove N/A if it exists inside the grade
+    //     if ($grade === '(N/A)') {
+    //         $grade = '()';
+    //     }
+    //     $stopWords = ['YA', 'NA', 'WA', 'KWA', 'OF', 'AND', 'THE', 'IN', 'WITH'];
+    //     $words = explode(' ', $subject);
+    //     if (count($words) > 1) {
+    //         $abbr = '';
+    //         foreach ($words as $w) {
+    //             if (!in_array(strtoupper($w), $stopWords)) {
+    //                 $abbr .= substr($w, 0, 1);
+    //             }
+    //         }
+    //     } else {
+    //         $abbr = substr($subject, 0, 4);
+    //     }
+    //     return strtoupper($abbr ?: substr($subject, 0, 3)) . $grade;
+    // }
+
+
+
+// Example usage inside your function:
     private function formatSubjectGrade(string $entry): string
     {
+        $subjectMap = [
+            'ACADEMIC COMMUNICATION SKILLS'    => 'ACCO',
+            'ADVANCE MATHEMATICS'              => 'ADV MATH',
+            'BASIC APPLIED MATHEMATICS'        => 'BAM',
+            'BASIC MATHEMATICS'                => 'BM',
+            'BIOLOGY'                          => 'BIO',
+            'BOOK KEEPING'                     => 'B/KEEPING',
+            'BUSSINESS  STUDIES'               => 'BSS', 
+            'BUSINESS STUDIES'                 => 'BSS', 
+            'CHEMISTRY'                        => 'CHEM',
+            'CIVICS'                           => 'CIV',
+            'COMMERCE'                         => 'COMM',
+            'ECONOMICS'                        => 'ECON',
+            'ENGLISH LANGUAGE'                 => 'ENG',
+            'FASIHI YA KISWAHILI'              => 'FAKISW',
+            'GENERAL STUDIES'                  => 'GS',
+            'GEOGRAPHY'                        => 'GEOG',
+            'HISTORIA YA TANZANIA NA MAADILI'  => 'HTM',
+            'HISTORY'                          => 'HIST',
+            'KISWAHILI'                        => 'KISW',
+            'LITERATURE IN ENGLISH'            => 'LIT ENG',
+            'MATHEMATICS'                      => 'MATH',
+            'PHYSICS'                          => 'PHY',
+        ];
         $parts = explode('-', $entry);
         if (count($parts) < 2) return $entry;
+        
         $subject = trim($parts[0]);
         $scoreGrade = $parts[1];
+        
         preg_match('/\((.*?)\)/', $scoreGrade, $matches);
         $grade = $matches[0] ?? '';
-        // Remove N/A if it exists inside the grade
+        
         if ($grade === '(N/A)') {
             $grade = '()';
         }
-        $stopWords = ['YA', 'NA', 'WA', 'KWA', 'OF', 'AND', 'THE', 'IN', 'WITH'];
-        $words = explode(' ', $subject);
-        if (count($words) > 1) {
-            $abbr = '';
-            foreach ($words as $w) {
-                if (!in_array(strtoupper($w), $stopWords)) {
-                    $abbr .= substr($w, 0, 1);
-                }
-            }
-        } else {
-            $abbr = substr($subject, 0, 4);
-        }
-        return strtoupper($abbr ?: substr($subject, 0, 3)) . $grade;
+        // Use mapping table instead of abbreviation logic
+        $code = $subjectMap[$subject] ?? strtoupper(substr($subject, 0, 4));
+        return $code . $grade;
     }
 
     public function notify_debitors(Request $request, SmsService $smsService)

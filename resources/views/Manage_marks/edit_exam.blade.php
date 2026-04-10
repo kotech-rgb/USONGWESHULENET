@@ -25,7 +25,7 @@
         	<div class="row mb-3">
         	  <div class="col-8">
         	  	<label>Examination Score</label>
-        	  	<input type="" class="form-control" name="score" value="{{ $student->score ?? '-' }}" @if(($student->score ?? '-') === '-') disabled @endif>
+        	  	<input type="" class="form-control" name="score" value="{{ $student->score ?? '' }}">
         	  </div>
 
         	  </div>

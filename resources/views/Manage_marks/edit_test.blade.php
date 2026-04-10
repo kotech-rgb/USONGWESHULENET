@@ -27,12 +27,12 @@
         	<div class="row mb-3">
         	  <div class="col-6">
         	  	<label>Test One</label>
-        	  	<input type="" class="form-control" name="test1" value="{{ $test->test1 ?? '-' }}" @if(($test->test1 ?? '-') === '-') disabled @endif>
+        	  	<input type="" class="form-control" name="test1" value="{{ $test->test1 ?? ' ' }}">
         	  </div>
 
         	  <div class="col-6">
         	  	<label>Test Two</label>
-        	  	<input type="" class="form-control" name="test2" value="{{ $test->test2 ?? '-' }}" @if(($test->test2 ?? '-') === '-') disabled @endif>
+        	  	<input type="" class="form-control" name="test2" value="{{ $test->test2 ?? ' ' }}">
         	  </div>
 
         	  </div>
@@ -41,12 +41,12 @@
         	  <div class="row mb-3">
         	  <div class="col-6">
         	  	<label>Test Three</label>
-        	  	<input type="" class="form-control" name="test3" value="{{ $test->test3 ?? '-' }}" @if(($test->test3 ?? '-') === '-') disabled @endif>
+        	  	<input type="" class="form-control" name="test3" value="{{ $test->test3 ?? ' ' }}">
         	  </div>
 
         	  <div class="col-6">
         	  	<label>Test Four</label>
-        	  	<input type="" class="form-control" name="test4" value="{{ $test->test4 ?? '-' }}" @if(($test->test4 ?? '-') === '-') disabled @endif>
+        	  	<input type="" class="form-control" name="test4" value="{{ $test->test4 ?? ' ' }}">
         	  </div>
 
         	  </div>
@@ -54,7 +54,7 @@
         	  <div lang="row">
         	  	<div class="col-12">
         	  	<label>Test Five</label>
-        	  	<input type="" class="form-control" name="test5" value="{{ $test->test4 ?? '-' }}" @if(($test->test5 ?? '-') === '-') disabled @endif>	
+        	  	<input type="" class="form-control" name="test5" value="{{ $test->test4 ?? ' ' }}">	
         	  	</div>
         	  </div>
         	  <a href="" class="btn btn-outline-secondary rounded-pill  btn-sm mt-4" data-bs-dismiss="modal">Close</a>

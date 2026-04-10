@@ -302,7 +302,7 @@
         }
         table#example th,
         table#example td {
-            border: 1px solid #555;
+            border: 1px solid whitesmoke;
             padding: 2px 4px;
             vertical-align: middle;
         }

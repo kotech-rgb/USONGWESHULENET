@@ -85,23 +85,22 @@ public function result_index(Request $request)
             // Get the specific status for this subject
             $subStatus = $studentSubjectData->firstWhere('subject_id', $subjectId)->status ?? 'core';
 
-            if ($exam && $exam->total_average !== null) {   // ← FIX 1: skip NULL marks
+            if ($exam) {
                 $gradeRecord = $grades->first(fn($g) => $exam->total_average >= $g->start_form && $exam->total_average <= $g->end_to);
                 $gradeLetter = $gradeRecord?->name ?? 'N/A';
-                $score = $exam->total_average;
+                $score       = $exam->total_average;
 
                 $subjectGPA[$subjectId] = $gradeRecord?->points;
 
                 // Only contribute to DIVISION if status is CORE and not in excluded list
                 if ($subStatus === 'core' && !in_array($subjectId, $excludedSubjects)) {
                     if ($gradeRecord) {
-                        $pointsArray[] = (int) $gradeRecord->points;   // ← FIX 2: cast to integer
+                        $pointsArray[] = $gradeRecord->points;
                     }
                 }
             } else {
                 $gradeLetter = 'N/A';
-                $score = null;
-                // No points added for NULL or missing exam
+                $score       = null;
             }
 
             $subjectGrades[] = "{$subjectId}-{$score}({$gradeLetter})";
@@ -119,9 +118,10 @@ public function result_index(Request $request)
         $topSubjects  = $level === 'A-level' ? 3 : 7;
         
         // Sort points (1 is best, 5/7 is worst) and take the best required number
-        // Ensure all points are integers before sorting
-        $bestCorePoints = collect($pointsArray)->map(fn($p) => (int) $p)->sort()->take($topSubjects)->all();
-        $totalPoints = $allFailing ? 'ABS' : (count($bestCorePoints) >= $topSubjects ? array_sum($bestCorePoints) : null);
+        $bestCorePoints = collect($pointsArray)->sort()->take($topSubjects)->all();
+        
+        // Division is INC if the student doesn't have enough core subjects
+        $totalPoints  = $allFailing ? 'ABS' : (count($bestCorePoints) >= $topSubjects ? array_sum($bestCorePoints) : null);
         
         $division     = $allFailing ? 'ABS' : ($totalPoints ? $divisions->first(fn($d) => $totalPoints >= $d->start_point && $totalPoints <= $d->end_point)?->div_name ?? 'N/A' : 'INC');
 

@@ -144,7 +144,7 @@
                                 }
                             }
                             $formattedScores = implode(',', $shortenedList);
-                            $msg = "MATOKEO YA {$row->firstname} {$row->lastname},\n";
+                            $msg = "USONGWE SECONDARY MATOKEO YA {$row->firstname} {$row->lastname},\n";
                             $msg .= "{$formattedScores}\n";
                             $msg .= "DIV:{$row->division} PTS:{$row->total_points}\n";
                             $msg .= $smsTemplate;

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\SmsService;
-use App\Services\ClickPesaService;
+use App\services\SmsService;
+use App\services\ClickPesaService;
 use App\Models\{Year, SmsPackage, Recharge, Configuration};
 use Illuminate\Support\Str;
 use DB;
@@ -118,7 +118,7 @@ class SMSController extends Controller
         $scoreEntries = explode(', ', $student->score_details);
         $formatted = array_map([$this, 'formatSubjectGrade'], $scoreEntries);
         $scoresString = implode(',', $formatted);
-        $msg = "MATOKEO YA {$student->firstname} {$student->lastname},\n";
+        $msg = "USONGWE SECONDARY MATOKEO YA {$student->firstname} {$student->lastname},\n";
         $msg .=$scoresString . "\n";
         $msg .= "DIV:{$student->division} PTS:{$student->total_points}\n";
         $msg .= trim($school->sms_temp ?? '');
